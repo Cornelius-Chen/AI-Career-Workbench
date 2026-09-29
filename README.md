@@ -17,7 +17,7 @@
 
 公开仓库只包含空的初始数据。简历、投递历史和数据库内容不得提交到 Git。
 
-运行 `CAREER_STANDALONE=1 npm run build` 构建独立 Worker，再运行 `npx wrangler deploy` 发布。对 `main` 的自动发布需要在 Cloudflare Workers Builds 中连接此仓库；仓库写入权限和发布权限由这个连接共同决定。
+运行 `npm run build:standalone` 构建独立 Worker，再运行 `npx wrangler deploy` 发布。对 `main` 的自动发布需要在 Cloudflare Workers Builds 中连接此仓库，构建命令设为 `npm run build:standalone`，部署命令设为 `npx wrangler deploy`；仓库写入权限和发布权限由这个连接共同决定。
 
 ## 检查
 
