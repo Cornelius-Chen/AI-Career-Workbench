@@ -16,7 +16,7 @@ export async function GET(request:Request){
  if(![env.GITHUB_OWNER_ID,env.GITHUB_BROTHER_ID].includes(String(user.id)))return new Response('这个 GitHub 账号尚未获得访问权限',{status:403});
  const encodedReturn=jar.get('career_oauth_return')?.value||'';
  const returnTo=encodedReturn?new TextDecoder().decode(Uint8Array.from(atob(encodedReturn.replace(/-/g,'+').replace(/_/g,'/')),character=>character.charCodeAt(0))):'/team';
- const response=Response.redirect(new URL(returnTo,url.origin),302);
+ const response=new Response(null,{status:302,headers:{Location:new URL(returnTo,url.origin).toString()}});
  response.headers.append('Set-Cookie',`${sessionCookie}=${await githubSession(user.id,user.login)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`);
  for(const name of ['career_oauth_state','career_oauth_verifier','career_oauth_return'])response.headers.append('Set-Cookie',`${name}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
  return response;

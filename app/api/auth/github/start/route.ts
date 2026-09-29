@@ -14,7 +14,7 @@ export async function GET(request:Request){
  authorize.searchParams.set('state',state);
  authorize.searchParams.set('code_challenge',challenge);
  authorize.searchParams.set('code_challenge_method','S256');
- const response=Response.redirect(authorize,302);
+ const response=new Response(null,{status:302,headers:{Location:authorize.toString()}});
  response.headers.append('Set-Cookie',`career_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`);
  response.headers.append('Set-Cookie',`career_oauth_verifier=${verifier}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`);
  response.headers.append('Set-Cookie',`career_oauth_return=${encode(new TextEncoder().encode(returnTo))}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`);
