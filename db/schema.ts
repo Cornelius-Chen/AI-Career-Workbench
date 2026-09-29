@@ -1,0 +1,10 @@
+import {sqliteTable,text,integer,uniqueIndex,index} from 'drizzle-orm/sqlite-core';
+export const settings=sqliteTable('settings',{id:text('id').primaryKey(),value:text('value').notNull()});
+export const jobs=sqliteTable('jobs',{id:text('id').primaryKey(),canonical:text('canonical').notNull(),data:text('data').notNull(),updated:text('updated').notNull()},t=>[uniqueIndex('jobs_canonical').on(t.canonical)]);
+export const facts=sqliteTable('facts',{id:text('id').primaryKey(),data:text('data').notNull()});
+export const applications=sqliteTable('applications',{id:text('id').primaryKey(),jobId:text('job_id').notNull(),companyGroup:text('company_group').notNull(),status:text('status').notNull(),resumeId:text('resume_id'),lease:text('lease'),leaseUntil:text('lease_until'),updated:text('updated').notNull(),data:text('data').notNull()},t=>[uniqueIndex('applications_job').on(t.jobId),index('applications_status').on(t.status)]);
+export const attempts=sqliteTable('attempts',{id:text('id').primaryKey(),applicationId:text('application_id').notNull(),day:text('day').notNull(),companyGroup:text('company_group').notNull(),created:text('created').notNull()},t=>[uniqueIndex('attempts_application').on(t.applicationId),index('attempts_day').on(t.day)]);
+export const events=sqliteTable('events',{id:text('id').primaryKey(),applicationId:text('application_id'),sourceKey:text('source_key').notNull(),occurred:text('occurred').notNull(),data:text('data').notNull()},t=>[uniqueIndex('events_source').on(t.sourceKey)]);
+export const resumes=sqliteTable('resumes',{id:text('id').primaryKey(),jobId:text('job_id').notNull(),created:text('created').notNull(),data:text('data').notNull()});
+export const files=sqliteTable('files',{id:text('id').primaryKey(),name:text('name').notNull(),type:text('type').notNull(),created:text('created').notNull(),data:text('data').notNull()});
+export const tasks=sqliteTable('tasks',{id:text('id').primaryKey(),kind:text('kind').notNull(),status:text('status').notNull(),created:text('created').notNull(),data:text('data').notNull()});
