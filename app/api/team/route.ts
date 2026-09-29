@@ -36,7 +36,7 @@ export async function GET(req:Request){
    eventsByApplication.set(event.application_id,entries);
   }
   const applications=[
-   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/intern(ship)?|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:eventsByApplication.get(a.id)||[]}}),
+   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/\bintern(?:ship)?\b|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:eventsByApplication.get(a.id)||[]}}),
    ...teamApps.results.map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated));
   const files=[
