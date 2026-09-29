@@ -1,0 +1,14 @@
+'use client';
+import {useState} from 'react';
+import {Button} from '@/components/ui/button';
+import {ArrowUpRight} from 'lucide-react';
+import {careerLane} from '@/lib/career-filters';
+
+const stages:Record<string,string>={queued:'计划投递',submitted:'已投递',assessment:'测评',interview:'面试',offer:'Offer',rejected:'未通过',withdrawn:'已撤回',uncertain:'待确认',blocked:'需处理'};
+export default function AgentRecommendations({recommendations,applications,members,currentEmail,busy,act}:{recommendations:any[];applications:any[];members:any[];currentEmail:string;busy:boolean;act:(action:string,payload:any,success:string)=>Promise<any>}){
+ const [showSkipped,setShowSkipped]=useState(false);
+ const name=(email:string)=>members.find(member=>member.email===email)?.name||email;
+ const agentItems=recommendations.filter(item=>item.source_kind==='agent');
+ const visible=agentItems.filter(item=>showSkipped||item.myDecision!=='skip');
+ return <><div className="page-heading"><div><p className="eyebrow">AGENT PICKS</p><h1>共享岗位</h1><p className="muted">岗位由两边 Agent 根据求职资料和申请记录推荐；你们只需决定加入计划或跳过。</p></div></div><div className="section-heading"><span className="pill">{agentItems.length} 条 Agent 推荐</span>{agentItems.some(item=>item.myDecision==='skip')&&<Button variant="ghost" size="sm" onClick={()=>setShowSkipped(!showSkipped)}>{showSkipped?'隐藏已跳过':'查看已跳过'}</Button>}</div><section className="panel">{visible.map(item=>{const participants=applications.filter(application=>application.url===item.url);const mine=participants.some(application=>application.memberEmail===currentEmail);return <article className="team-recommendation" key={item.id}><div className="section-heading"><div><p className="eyebrow">{item.target_email?`适合 ${name(item.target_email)}`:item.coapply?'建议双方分别申请':'供双方考虑'} · {name(item.author_email)} 的 Agent</p><h3>{item.company} · {item.title}</h3></div><a className="button-link" href={item.url} target="_blank" rel="noreferrer">官方岗位 <ArrowUpRight size={14}/></a></div><p className="muted">{item.location||'地点待核实'} · {careerLane(item)}</p><p>{item.note}</p><p className="muted">依据：{item.evidence}</p><p className="muted">{participants.length?participants.map(application=>name(application.memberEmail)+'：'+(stages[application.status]||application.status)).join(' · '):'双方尚未加入申请计划'}</p><div className="buttons mt-4"><Button size="sm" disabled={busy||mine} onClick={()=>act('plan.add',{recommendationId:item.id},'已加入你的申请计划')}>{mine?'已在我的申请中':'加入我的申请'}</Button>{item.myDecision==='skip'?<Button size="sm" variant="outline" disabled={busy} onClick={()=>act('recommendation.restore',{id:item.id},'已恢复推荐')}>恢复推荐</Button>:<Button size="sm" variant="ghost" disabled={busy} onClick={()=>act('recommendation.dismiss',{id:item.id},'已跳过')}>不考虑</Button>}</div></article>})}{!visible.length&&<p className="empty-copy">Agent 尚未给出带依据的岗位推荐。让任一方的 Agent 打开这个空间，读取双方资料后再推荐；普通候选岗位不会冒充 Agent 推荐。</p>}</section></>;
+}

@@ -160,3 +160,37 @@ body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC"
 .assessment-section li svg{flex-shrink:0;margin-top:4px;color:#2c7a63}
 @media(max-width:650px){.mail-health{align-items:flex-start;flex-direction:column}.mail-health-actions{width:100%;justify-content:space-between}.deadline-row{align-items:flex-start;flex-wrap:wrap}.deadline-row>.buttons{width:100%;padding-left:33px}.deadline-row>.buttons>*{flex:1}}
 @media(max-width:650px){.assessment-meta{grid-template-columns:1fr}.assessment-links>*{width:100%}.assessment-hero{padding:18px}.assessment-hero h2{font-size:19px}}
+
+.embedded-workspace{margin:8px 0 28px;border:1px solid #dce3ed;border-radius:14px;background:#f7f9fc;overflow:hidden}
+.mine-stat{grid-template-columns:1fr}
+.embedded-nav{display:flex;gap:5px;overflow-x:auto;padding:12px 16px;border-bottom:1px solid #e0e7f0;background:#fff}
+.embedded-nav button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border-radius:7px;padding:9px 12px;color:#586b84;font-size:13px}
+.embedded-nav button.active,.embedded-nav button:hover{background:#eaf1ff;color:#245bd9}
+.embedded-content{padding:24px;max-width:none}
+.embedded-content .page-heading{margin-bottom:20px}
+.embedded-content .metrics{margin-top:15px}
+.application-filters{display:grid;grid-template-columns:minmax(200px,2fr) repeat(5,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+.application-filters select,.toolbar select{min-height:40px;border:1px solid #dce3ed;border-radius:7px;background:#fff;padding:0 10px;font-size:13px;color:#364c68}
+.application-results,.application-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#708198;font-size:13px;padding:12px 0}
+.application-results strong{color:#273e5e}
+.application-compact{border-top:1px solid #e5ebf3}
+.application-compact>summary{display:grid;grid-template-columns:minmax(135px,1fr) minmax(220px,2fr) auto;align-items:center;gap:16px;padding:15px 8px;color:#243b59;list-style:none}
+.application-compact>summary::-webkit-details-marker{display:none}
+.application-compact>summary:hover{background:#f7faff}
+.application-compact>summary small{display:block;font-size:12px;color:#75869b;font-weight:400;margin-top:3px}
+.application-company{font-weight:650}
+.application-title{font-weight:500}
+.application-expanded{display:grid;gap:10px;padding:4px 12px 18px 25%;font-size:13px;line-height:1.6}
+.application-expanded a{color:#245bd9}
+.application-expanded button{justify-self:start}
+.application-pagination{justify-content:center;margin-top:10px}
+.career-profile{margin-bottom:20px}
+.career-profile-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px;font-size:13px;color:#60758e}
+.agent-insight{border-top:1px solid #e6ebf2;padding:18px 0}
+.agent-insight:first-of-type{margin-top:14px}
+.agent-insight .section-heading{margin-bottom:8px;color:#547195;font-size:13px}
+.agent-insight h3{font-size:16px;margin-bottom:10px}
+.agent-insight p{font-size:13px;line-height:1.7;margin:6px 0}
+.agent-insight a{color:#245bd9;font-size:13px}
+@media(max-width:1100px){.application-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.application-filters input{grid-column:1/-1}}
+@media(max-width:700px){.embedded-content{padding:16px}.application-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.application-compact>summary{grid-template-columns:1fr auto;gap:6px}.application-title{grid-column:1/-1;grid-row:2}.application-expanded{padding-left:12px}.career-profile-facts{grid-template-columns:1fr}}
