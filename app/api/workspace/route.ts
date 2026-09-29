@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PDFDocument } from "pdf-lib";
+import reviewedResume from "@/data/manually-reviewed-resume.json";
 import {
   db,
   bucket,
@@ -209,7 +210,7 @@ export async function POST(req: Request) {
     const action = z.string().parse(b.action);
     if (
       principal.kind === "worker" &&
-      ["profile.save", "fact.save", "rules.save"].includes(
+      ["profile.save", "fact.save", "facts.curated", "rules.save"].includes(
         action,
       )
     )
@@ -224,8 +225,8 @@ export async function POST(req: Request) {
           location: z.string().max(150),
           linkedin: z.string().max(300),
           github: z.string().max(300),
-          graduation: z.string().max(10),
-          startDate: z.string().max(10),
+          graduation: z.literal("2026-12-31"),
+          startDate: z.string().regex(/^2027-\d{2}-\d{2}$/),
           degree: z.string().min(1).max(150),
           school: z.string().min(1).max(150),
           optStatus: z.enum(["planned", "pending", "approved"]),
@@ -286,6 +287,74 @@ export async function POST(req: Request) {
         limit,
       ]);
       return json({ ok: true, limit });
+    }
+    if (action === "facts.curated") {
+      const markerKey = "manual-resume-review-v1";
+      if (await getSetting(markerKey))
+        return json({ ok: true, alreadyApplied: true });
+      const current = await list("facts");
+      const expected = z
+        .array(z.object({ id, updated: z.string() }))
+        .max(45)
+        .parse(b.expected);
+      if (
+        current.length !== expected.length ||
+        current.some(
+          (f) =>
+            !expected.some((e) => e.id === f.id && e.updated === f.updated),
+        )
+      )
+        throw Error("经历刚刚发生变更，请刷新后再保存");
+      const marker = JSON.stringify({
+        at: now(),
+        token: crypto.randomUUID(),
+        source: "Manual visual review of latest FDE resume",
+        previousIds: current.map((f) => f.id),
+      });
+      const guards =
+        current
+          .map(
+            () =>
+              "EXISTS(SELECT 1 FROM facts WHERE id=? AND json_extract(data,'$.updated')=?)",
+          )
+          .join(" AND ") || "1=1";
+      const statements = [
+        db()
+          .prepare(
+            "INSERT OR IGNORE INTO settings(id,value) SELECT ?,? WHERE " +
+              guards,
+          )
+          .bind(
+            markerKey,
+            marker,
+            ...current.flatMap((f) => [f.id, f.updated]),
+          ),
+      ];
+      for (const f of reviewedResume as Fact[])
+        statements.push(
+          db()
+            .prepare(
+              "INSERT INTO facts(id,data) SELECT ?,? WHERE EXISTS(SELECT 1 FROM settings WHERE id=? AND value=?)",
+            )
+            .bind(
+              f.id,
+              JSON.stringify({ ...f, updated: now() }),
+              markerKey,
+              marker,
+            ),
+        );
+      for (const f of current)
+        statements.push(
+          db()
+            .prepare(
+              "UPDATE facts SET data=json_set(data,'$.archived',1,'$.archiveReason','Superseded by manual visual resume review') WHERE id=? AND EXISTS(SELECT 1 FROM settings WHERE id=? AND value=?)",
+            )
+            .bind(f.id, markerKey, marker),
+        );
+      await db().batch(statements);
+      if (!(await getSetting(markerKey)))
+        throw Error("经历发生变更，尚未覆盖，请刷新后重试");
+      return json({ ok: true, primary: 10, historical: 6 });
     }
     if (action === "fact.save") {
       const f = z

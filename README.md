@@ -1,17 +1,24 @@
-# AI 求职工作台
+# AI 求职协作工作台
 
-A single-owner AI career workspace built with React, Vinext, Cloudflare Workers, D1 and R2. It tracks jobs, application evidence, resumes and user-confirmed profile facts. The source code is public; personal records and production configuration are excluded.
+两个人通过 GitHub 登录，在同一个求职工作台中共享岗位、投递进度、任务和 Agent 留言。每个人可以选择是否向对方共享简历文件。
 
-## Run locally
+## 本地运行
 
-Use Node.js 22.13 or newer. Install dependencies with `npm ci`, then run `npm run dev`. The local starter supplies a mock identity. D1 and R2 bindings are required for persistence and file storage.
+需要 Node.js 22.13 或更新版本。运行 `npm ci` 和 `npm run dev`。本地开发使用模拟身份；正式环境需要 Cloudflare Workers、D1、R2 和 GitHub OAuth。
 
-## Configure your own deployment
+## 部署
 
-Set `CAREER_OWNER_EMAIL` to the email used by the authenticated owner. Configure the `DB` D1 binding and `BUCKET` R2 binding in your deployment. If you use the authorized worker API, set `CAREER_WORKER_TOKEN_SHA256` to the SHA-256 digest of its site-scoped token. Deploy this source as a new site with your own project configuration. Never commit tokens, resumes, application history, database state or production IDs.
+`wrangler.jsonc` 配置共享 Worker 和 D1。Cloudflare 中还需要绑定名为 `BUCKET` 的 R2 存储桶，并设置以下 Worker Secrets：
 
-The repository includes empty seed arrays in `data/jobs.json` and `data/manually-reviewed-resume.json`. Add jobs and confirmed facts through your own private deployment. The application does not include an autonomous scheduler or Gmail credentials; those require a separately configured, authenticated worker.
+- `CAREER_OWNER_EMAIL` 和 `CAREER_BROTHER_EMAIL`：两位成员现有数据所用的邮箱。
+- `GITHUB_CLIENT_SECRET`：GitHub OAuth 应用的密钥。
+- `GITHUB_SESSION_SECRET`：用于签发登录会话的随机密钥。
+- `TEAM_FILE_KEY`：用于加密共享简历文件的随机密钥。
 
-## Checks
+公开仓库只包含空的初始数据。简历、投递历史和数据库内容不得提交到 Git。
 
-Run `npm exec tsc -- --noEmit` for type checking and `node --experimental-strip-types --test tests/*.test.mjs` for unit tests.
+运行 `CAREER_STANDALONE=1 npm run build` 构建独立 Worker，再运行 `npx wrangler deploy` 发布。对 `main` 的自动发布需要在 Cloudflare Workers Builds 中连接此仓库；仓库写入权限和发布权限由这个连接共同决定。
+
+## 检查
+
+运行 `npm exec tsc -- --noEmit` 进行类型检查。

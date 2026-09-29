@@ -30,7 +30,6 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-!.env.example
 
 # vercel
 .vercel
@@ -50,6 +49,6 @@ next-env.d.ts
 /output/
 *.tsbuildinfo
 
-# Local applicant documents are not source.
-/*.pdf
-/*.docx
+# Private records are stored outside this repository.
+*.pdf
+*.docx

@@ -12,7 +12,7 @@ export function requiredSpokenLanguage(title:string){
  return (parenthesized||suffix||bilingual||specialist||( /\bmultilingual\b/i.test(title)?'multilingual':null))?.trim().toLowerCase()||null;
 }
 export function missingSpokenLanguage(title:string,facts:Fact[]){const language=requiredSpokenLanguage(title);return language&&!facts.some(f=>f.confirmed&&f.category==='Skills'&&f.tags.some(tag=>tag.toLowerCase()===`spoken-language:${language}`))?language:null}
-export const defaultProfile={name:'',email:'',phone:'',location:'New York, NY',linkedin:'',github:'',graduation:'',startDate:'',degree:'',school:'',optStatus:'planned',currentAuthorization:'unknown',futureSponsorship:'unknown',confirmed:false};
+export const defaultProfile={name:'',email:'',phone:'',location:'New York, NY',linkedin:'',github:'',graduation:'',startDate:'2027-01-01',degree:'',school:'',optStatus:'planned',currentAuthorization:'unknown',futureSponsorship:'unknown',confirmed:false};
 export const defaultRules={minBase:90000,maxDaily:20,allowUnknownSponsorship:true,paused:false,historyReviewed:false,gmailStatus:'reauth_required',lastMailSync:null,lastMailAttempt:null,lastMailError:null,lastMailProcessed:0,lastMailActionable:0,lastMailUnmatched:0,lastJobSync:null,lastRun:null,timezone:'America/New_York'};
 export const checkLabels:Record<string,string>={us:'美国工作地点',fulltime:'全职',timing:'2027 入职兼容',base:'基本年薪门槛',experience:'硬性经验要求',degree:'学历与专业',authorization:'工作授权要求'};
 export const stageLabels:Record<string,string>={queued:'待投递',processing:'正在准备',submitting:'结果待核实',uncertain:'结果待核实',submitted:'已提交',assessment:'测评',interview:'面试',offer:'Offer',rejected:'拒绝',withdrawn:'撤回',blocked:'需要处理'};

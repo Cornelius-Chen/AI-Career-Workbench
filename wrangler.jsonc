@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-career-workbench",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "GITHUB_CLIENT_ID": "Ov23lij7C14YNVoim9tv",
+    "GITHUB_OWNER_ID": "194889682",
+    "GITHUB_BROTHER_ID": "224968893"
+  },
+  "assets": {"directory": "dist/client"},
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "ai-career-workbench",
+    "database_id": "007cb136-6209-4f8c-b07a-216e02b9f88e",
+    "migrations_dir": "drizzle"
+  }]
+}
