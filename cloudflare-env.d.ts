@@ -3,7 +3,7 @@ declare namespace Cloudflare {
     DB?: D1Database;
     CAREER_WORKER_TOKEN_SHA256?: string;
     TEAM_FILE_KEY?: string;
-    BUCKET?: R2Bucket;
+    CAREER_FILES?: KVNamespace;
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;
     GITHUB_SESSION_SECRET?: string;

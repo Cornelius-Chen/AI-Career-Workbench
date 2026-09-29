@@ -10,6 +10,7 @@
     "GITHUB_BROTHER_ID": "224968893"
   },
   "assets": {"directory": "dist/client"},
+  "kv_namespaces": [{"binding": "CAREER_FILES", "id": "ed84e3a20bd94ac18bd8b5044d1029ce"}],
   "d1_databases": [{
     "binding": "DB",
     "database_name": "ai-career-workbench",

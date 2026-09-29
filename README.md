@@ -4,11 +4,11 @@
 
 ## 本地运行
 
-需要 Node.js 22.13 或更新版本。运行 `npm ci` 和 `npm run dev`。本地开发使用模拟身份；正式环境需要 Cloudflare Workers、D1、R2 和 GitHub OAuth。
+需要 Node.js 22.13 或更新版本。运行 `npm ci` 和 `npm run dev`。本地开发使用模拟身份；正式环境需要 Cloudflare Workers、D1、KV 和 GitHub OAuth。
 
 ## 部署
 
-`wrangler.jsonc` 配置共享 Worker 和 D1。Cloudflare 中还需要绑定名为 `BUCKET` 的 R2 存储桶，并设置以下 Worker Secrets：
+`wrangler.jsonc` 配置共享 Worker、D1 和存储附件的 KV，并设置以下 Worker Secrets：
 
 - `CAREER_OWNER_EMAIL` 和 `CAREER_BROTHER_EMAIL`：两位成员现有数据所用的邮箱。
 - `GITHUB_CLIENT_SECRET`：GitHub OAuth 应用的密钥。

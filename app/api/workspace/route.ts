@@ -3,7 +3,8 @@ import { PDFDocument } from "pdf-lib";
 import reviewedResume from "@/data/manually-reviewed-resume.json";
 import {
   db,
-  bucket,
+  getFile,
+  putFile,
   owner,
   init,
   list,
@@ -600,9 +601,7 @@ export async function POST(req: Request) {
         },
       ];
       for (const f of entries) {
-        await bucket().put(f.id, f.bytes, {
-          httpMetadata: { contentType: f.type },
-        });
+        await putFile(f.id, f.bytes);
         await db()
           .prepare(
             "INSERT INTO files(id,name,type,created,data) VALUES(?,?,?,?,?)",
@@ -670,10 +669,10 @@ export async function POST(req: Request) {
           .bind(sourceIds[i])
           .first<any>();
         if (meta?.type !== types[i]) throw Error("需要对应的 PDF 和 DOCX 文件");
-        const obj = await bucket().get(sourceIds[i]);
-        if (!obj || obj.size > 10 * 1024 * 1024)
+        const obj = await getFile(sourceIds[i]);
+        if (!obj || obj.byteLength > 10 * 1024 * 1024)
           throw Error("文件不存在或过大");
-        files.push(new Uint8Array(await obj.arrayBuffer()));
+        files.push(new Uint8Array(obj));
       }
       if ((await PDFDocument.load(files[0])).getPageCount() !== 1)
         throw Error("投递简历须为一页");
@@ -698,9 +697,7 @@ export async function POST(req: Request) {
       const statements = [];
       for (let i = 0; i < files.length; i++) {
         const fid = i ? docxId : pdfId;
-        await bucket().put(fid, files[i], {
-          httpMetadata: { contentType: types[i] },
-        });
+        await putFile(fid, files[i]);
         statements.push(
           db()
             .prepare(

@@ -1,4 +1,4 @@
-import {bucket,db} from '@/lib/store';
+import {putFile,db} from '@/lib/store';
 import {encryptTeamFile} from '@/lib/team-crypto';
 import {teamError,teamUser} from '@/lib/team';
 
@@ -17,7 +17,7 @@ export async function POST(req:Request){
   if(extension==='docx'&&(bytes[0]!==80||bytes[1]!==75))throw Error('文件格式与扩展名不一致');
   const id=crypto.randomUUID();
   const type=extension==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  await bucket().put('team/'+id,await encryptTeamFile(bytes));
+  await putFile('team/'+id,await encryptTeamFile(bytes));
   await db().prepare('INSERT INTO team_files(id,member_email,name,type,size,created) VALUES(?,?,?,?,?,?)').bind(id,me.email,file.name,type,file.size,new Date().toISOString()).run();
   return Response.json({id,name:file.name},{headers:{'Cache-Control':'private, no-store'}});
  }catch(e){return teamError(e)}
