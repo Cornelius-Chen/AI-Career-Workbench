@@ -44,7 +44,7 @@ export async function GET(req:Request){
    ...ownerFiles.results.filter(()=>shared(OWNER_EMAIL)).map(f=>({id:f.id,memberEmail:OWNER_EMAIL,name:f.name,type:f.type,size:JSON.parse(f.data).size||null,created:f.created,url:'/api/team/files/'+f.id}))
   ];
   const original=legacyProfile?JSON.parse(legacyProfile.value):{};
-  const careerProfiles=users.map(member=>profiles.results.find(profile=>profile.member_email===member.email)||{member_email:member.email,headline:member.role==='owner'?[original.school,original.degree].filter(Boolean).join(' · '):'',location:member.role==='owner'?original.location||'':'',focus:'',skills:'',start_date:member.role==='owner'?original.startDate||'':'',updated:''});
+  const careerProfiles=users.map(member=>profiles.results.find(profile=>profile.member_email===member.email)||{member_email:member.email,headline:member.role==='owner'?[original.school,original.degree].filter(Boolean).join(' · '):'',location:member.role==='owner'?original.location||'':'',focus:'',skills:'',start_date:member.role==='owner'?original.startDate||'':'2027 夏季',target_type:member.role==='owner'?'full_time':'summer_intern',updated:''});
   const sharedRecommendations=recommendations.results.map(r=>({...r,coapply:!!r.coapply,myDecision:decisions.results.find(d=>d.recommendation_id===r.id&&d.member_email===me.email)?.decision||''}));
   const agentNotes=messages.results.filter(message=>message.author_kind==='agent').map(message=>({...message,...JSON.parse(message.content)}));
   const requests=messages.results.filter(message=>message.author_kind==='person');
@@ -67,8 +67,8 @@ export async function POST(req:Request){
    return reply({ok:true});
   }
   if(action==='profile.save'){
-   const profile=z.object({headline:z.string().trim().max(180),location:z.string().trim().max(120),focus:z.string().trim().max(300),skills:z.string().trim().max(500),startDate:z.string().trim().max(50)}).parse(input.profile);
-   await db().prepare('INSERT INTO team_profiles(member_email,headline,location,focus,skills,start_date,updated) VALUES(?,?,?,?,?,?,?) ON CONFLICT(member_email) DO UPDATE SET headline=excluded.headline,location=excluded.location,focus=excluded.focus,skills=excluded.skills,start_date=excluded.start_date,updated=excluded.updated').bind(me.email,profile.headline,profile.location,profile.focus,profile.skills,profile.startDate,now()).run();
+   const profile=z.object({headline:z.string().trim().max(180),location:z.string().trim().max(120),focus:z.string().trim().max(300),skills:z.string().trim().max(500),startDate:z.string().trim().max(50),targetType:z.enum(['full_time','summer_intern'])}).parse(input.profile);
+   await db().prepare('INSERT INTO team_profiles(member_email,headline,location,focus,skills,start_date,target_type,updated) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(member_email) DO UPDATE SET headline=excluded.headline,location=excluded.location,focus=excluded.focus,skills=excluded.skills,start_date=excluded.start_date,target_type=excluded.target_type,updated=excluded.updated').bind(me.email,profile.headline,profile.location,profile.focus,profile.skills,profile.startDate,profile.targetType,now()).run();
    return reply({ok:true});
   }
   if(action==='recommendation.agent'){
@@ -77,10 +77,21 @@ export async function POST(req:Request){
    const data=job?JSON.parse(job.data):z.object({company:z.string().min(1).max(160),title:z.string().min(1).max(200),url:z.string().url().refine(value=>value.startsWith('https://'),'请填写 HTTPS 岗位链接'),location:z.string().max(120),lane:z.string().max(100)}).parse(input);
    const note=z.string().trim().min(20).max(1000).parse(input.note);
    const evidence=z.string().trim().min(8).max(1000).parse(input.evidence);
-   const targetEmail=z.enum([OWNER_EMAIL,BROTHER_EMAIL]).nullable().parse(input.targetEmail||null);
+   const targetEmail=z.enum([OWNER_EMAIL,BROTHER_EMAIL]).parse(input.targetEmail);
+   const opportunityType=z.enum(['full_time','summer_intern']).parse(input.opportunityType);
+   const period=z.string().trim().min(4).max(80).parse(input.period);
    const coapply=z.boolean().parse(input.coapply||false);
+   const targetProfile=await db().prepare('SELECT target_type,start_date FROM team_profiles WHERE member_email=?').bind(targetEmail).first<any>();
+   if(targetProfile.target_type!==opportunityType)throw Error('岗位类型与推荐对象的求职目标不符');
+   const targetYear=targetProfile.start_date.match(/20\d{2}/)?.[0];
+   if(targetYear&&!period.includes(targetYear))throw Error('岗位时间与推荐对象的目标年份不符');
+   if(coapply){
+    const otherEmail=targetEmail===OWNER_EMAIL?BROTHER_EMAIL:OWNER_EMAIL;
+    const otherProfile=await db().prepare('SELECT target_type FROM team_profiles WHERE member_email=?').bind(otherEmail).first<any>();
+    if(otherProfile.target_type!==opportunityType)throw Error('两人的求职类型不同，请分别推荐对应岗位');
+   }
    const id=crypto.randomUUID();
-   await db().prepare("INSERT INTO team_recommendations(id,author_email,company,title,url,location,lane,note,source_kind,target_email,evidence,coapply,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET author_email=excluded.author_email,note=excluded.note,source_kind='agent',target_email=excluded.target_email,evidence=excluded.evidence,coapply=excluded.coapply").bind(id,me.email,data.company,data.title,data.url,data.location||'',data.lane||'',note,'agent',targetEmail||'',evidence,coapply?1:0,now()).run();
+   await db().prepare("INSERT INTO team_recommendations(id,author_email,company,title,url,location,lane,note,source_kind,target_email,opportunity_type,period,evidence,coapply,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET author_email=excluded.author_email,note=excluded.note,source_kind='agent',target_email=excluded.target_email,opportunity_type=excluded.opportunity_type,period=excluded.period,evidence=excluded.evidence,coapply=excluded.coapply").bind(id,me.email,data.company,data.title,data.url,data.location||'',data.lane||'',note,'agent',coapply?'':targetEmail,opportunityType,period,evidence,coapply?1:0,now()).run();
    const row=await db().prepare('SELECT id FROM team_recommendations WHERE url=?').bind(data.url).first<any>();
    return reply({id:row.id});
   }
@@ -101,8 +112,13 @@ export async function POST(req:Request){
   }
   if(action==='plan.add'){
    const recommendationId=z.string().parse(input.recommendationId);
-   const recommendation=await db().prepare('SELECT id FROM team_recommendations WHERE id=?').bind(recommendationId).first<any>();
+   const recommendation=await db().prepare('SELECT id,target_email,opportunity_type,period FROM team_recommendations WHERE id=?').bind(recommendationId).first<any>();
    if(!recommendation)throw Error('岗位推荐不存在');
+   if(recommendation.target_email&&recommendation.target_email!==me.email)throw Error('这个岗位推荐给另一位成员');
+   const profile=await db().prepare('SELECT target_type,start_date FROM team_profiles WHERE member_email=?').bind(me.email).first<any>();
+   if(profile.target_type!==recommendation.opportunity_type)throw Error('岗位类型与你的求职目标不符');
+   const targetYear=profile.start_date.match(/20\d{2}/)?.[0];
+   if(targetYear&&!recommendation.period.includes(targetYear))throw Error('岗位时间与你的求职目标不符');
    const id=crypto.randomUUID(),created=now();
    await db().prepare('INSERT OR IGNORE INTO team_applications(id,member_email,recommendation_id,status,created,updated) VALUES(?,?,?,?,?,?)').bind(id,me.email,recommendationId,'queued',created,created).run();
    await db().prepare('DELETE FROM team_recommendation_decisions WHERE member_email=? AND recommendation_id=?').bind(me.email,recommendationId).run();

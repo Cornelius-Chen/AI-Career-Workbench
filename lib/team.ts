@@ -11,7 +11,8 @@ export async function teamUser(){
  const created=new Date().toISOString();
  await db().batch([
   db().prepare('INSERT OR IGNORE INTO team_members(email,name,role,created) VALUES(?,?,?,?)').bind(OWNER_EMAIL,'成员 1','owner',created),
-  db().prepare('INSERT OR IGNORE INTO team_members(email,name,role,created) VALUES(?,?,?,?)').bind(BROTHER_EMAIL,'弟弟','member',created)
+  db().prepare('INSERT OR IGNORE INTO team_members(email,name,role,created) VALUES(?,?,?,?)').bind(BROTHER_EMAIL,'弟弟','member',created),
+  db().prepare("INSERT OR IGNORE INTO team_profiles(member_email,target_type,start_date,updated) VALUES(?,'full_time','',?),(?,'summer_intern','2027 夏季',?)").bind(OWNER_EMAIL,created,BROTHER_EMAIL,created)
  ]);
  const member=await db().prepare('SELECT * FROM team_members WHERE email=?').bind(email).first<any>();
  if(!member)throw Error('FORBIDDEN');
