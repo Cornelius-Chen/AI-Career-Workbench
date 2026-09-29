@@ -14,7 +14,7 @@ export async function GET(req:Request){
   const [members,recommendations,teamApps,teamEvents,ownerApps,ownerEvents,jobs,teamFiles,ownerFiles,messages,agentTasks,profiles,legacyProfile,decisions]=await Promise.all([
    db().prepare('SELECT email,name,role,resume_shared FROM team_members ORDER BY role DESC,created').all<any>(),
    db().prepare('SELECT * FROM team_recommendations ORDER BY created DESC').all<any>(),
-   db().prepare('SELECT a.*,r.company,r.title,r.url,r.location,r.lane FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id ORDER BY a.updated DESC').all<any>(),
+   db().prepare('SELECT a.*,r.company,r.title,r.url,r.location,r.lane,r.opportunity_type,r.period FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id ORDER BY a.updated DESC').all<any>(),
    db().prepare('SELECT * FROM team_application_events ORDER BY created DESC').all<any>(),
    db().prepare("SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id ORDER BY a.updated DESC").all<any>(),
    db().prepare('SELECT application_id,occurred,data FROM events WHERE application_id IS NOT NULL ORDER BY occurred DESC').all<any>(),
@@ -36,8 +36,8 @@ export async function GET(req:Request){
    eventsByApplication.set(event.application_id,entries);
   }
   const applications=[
-   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:eventsByApplication.get(a.id)||[]}}),
-   ...teamApps.results.map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
+   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/intern(ship)?|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:eventsByApplication.get(a.id)||[]}}),
+   ...teamApps.results.map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated));
   const files=[
    ...teamFiles.results.filter(f=>shared(f.member_email)).map(f=>({id:f.id,memberEmail:f.member_email,name:f.name,type:f.type,size:f.size,created:f.created,url:'/api/team/files/'+f.id})),
