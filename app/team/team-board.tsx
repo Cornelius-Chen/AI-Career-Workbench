@@ -22,7 +22,7 @@ export default function TeamBoard(){
  const [data,setData]=useState<any>(null),[view,setView]=useState('mine'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [editing,setEditing]=useState<any>(null);
  const [showAllFiles,setShowAllFiles]=useState(false);
- const load=useCallback(async()=>{const response=await fetch('/api/team',{cache:'no-store'});const body:any=await response.json();if(!response.ok)throw Error(body.error);setData(body);return body},[]);
+ const load=useCallback(async()=>{const response=await fetch('/api/team',{cache:'no-store'});if(response.status===401){location.assign('/api/auth/github/start?return_to=%2Fteam');return}const body:any=await response.json();if(!response.ok)throw Error(body.error);setData(body);return body},[]);
  useEffect(()=>{load().catch(e=>setError(e.message))},[load]);
  const act=async(action:string,payload:any={},message='已保存')=>{
   setBusy(true);
