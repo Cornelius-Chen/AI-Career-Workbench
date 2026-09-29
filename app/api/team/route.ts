@@ -16,7 +16,7 @@ export async function GET(req:Request){
    db().prepare('SELECT * FROM team_recommendations ORDER BY created DESC').all<any>(),
    db().prepare('SELECT a.*,r.company,r.title,r.url,r.location,r.lane,r.opportunity_type,r.period FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id ORDER BY a.updated DESC').all<any>(),
    db().prepare('SELECT * FROM team_application_events ORDER BY created DESC').all<any>(),
-   db().prepare("SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id ORDER BY a.updated DESC").all<any>(),
+   db().prepare("SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status!='season_excluded' ORDER BY a.updated DESC").all<any>(),
    db().prepare('SELECT application_id,occurred,data FROM events WHERE application_id IS NOT NULL ORDER BY occurred DESC').all<any>(),
    db().prepare("SELECT id,data FROM jobs WHERE COALESCE(json_extract(data,'$.hidden'),0)=0 ORDER BY CAST(json_extract(data,'$.score') AS REAL) DESC LIMIT 120").all<any>(),
    db().prepare('SELECT * FROM team_files ORDER BY created DESC').all<any>(),

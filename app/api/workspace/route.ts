@@ -49,6 +49,7 @@ function failure(e: any) {
   );
 }
 const now = () => new Date().toISOString();
+const fallSeason = "fall-2026";
 const str = z.string().max(8000);
 const id = z.string().min(1).max(160);
 async function getJob(id: string) {
@@ -88,13 +89,85 @@ async function applicationLimitReached(
   }
   return null;
 }
+function seasonExclusionReason(job: any, application: any) {
+  const detail = [application.blockReason, application.notes].filter(Boolean).join(" ");
+  if (job.active === "closed" || /\b(?:job not found|page not found|job board .*no longer valid|posting .*closed|listing is closed)\b|unavailable \(404\)|岗位已关闭|招聘已关闭|岗位.*(?:404|不再有效)/i.test(detail)) return "岗位已关闭";
+  if (Object.values(job.checks || {}).some((check: any) => check.value === "fail") || [
+    /官网硬性条件不符|明确(?:要求|排除).*(?:不符|不符合|无法|不满足)|hard mismatch|hard requirements? (?:beyond|not met)|does not meet|do not meet|cannot truthfully meet|cannot truthfully satisfy|not eligible|incompatible with confirmed|conflicts? with confirmed/i,
+    /与已确认.*(?:不符|不符合)|已确认.*(?:不满足|不支持该硬性|没有该能力)|无法如实满足|当前.*不符合|低于.*(?:门槛|minimum)|无法如实提交|不属于(?:当前|候选人).*(?:技术路线|背景)|不适合当前候选人|本人尚无.*专业|当前候选人不具备|当前简历未包含该年限|当前候选人无此经历/i,
+    /^(?=[\s\S]*\b(?:years?|experience|production|expertise|language|skills?|engineering|research|authorization|sponsorship|citizenship|start|systems?|technical)\b)[\s\S]*(?:not (?:established|present|supported|confirmed) (?:by|in|from) (?:the )?confirmed (?:profile|experience|record|history)|not in the confirmed profile|absent from (?:the )?confirmed|beyond (?:the )?confirmed|neither .* (?:is|are) confirmed|none (?:is|are) confirmed experience)/i,
+    /not (?:in|within) (?:the )?(?:current|confirmed) .*technical scope|不属于当前.*技术路线/i,
+    /below (?:the )?(?:confirmed |salary )?\$?90[,0]* minimum|岗位要求.*语言能力.*没有|岗位标题明确要求.*口语.*没有|岗位标题明确要求.*口语.*未确认/i,
+    /does not match the confirmed profile|truthful status cannot establish eligibility|candidate is not a U\.S\. citizen|已确认经历不包含这些硬性条件|已确认经历仍为原型.*不能如实声称满足|与候选人的未来 sponsorship 需求冲突|未达到该硬性条件|当前候选人不具备|候选人无此经历/i,
+  ].some((pattern) => pattern.test(detail))) return "岗位条件不符";
+  if (/申请上限|application limit|applications? (?:globally|per 60|within 60)|may not re-apply|may not apply more than|limits applications|limits candidates to two positions globally/i.test(detail)) return "公司申请次数上限";
+  return null;
+}
+async function seasonCandidates(jobIds?: string[]) {
+  const applicationQuery = db().prepare(`SELECT * FROM applications a WHERE status IN ('queued','blocked','uncertain') AND NOT EXISTS (SELECT 1 FROM events e WHERE e.application_id=a.id AND json_extract(e.data,'$.stage')='submitted' AND COALESCE(json_extract(e.data,'$.accepted'),1)=1)${jobIds ? ` AND job_id IN (${jobIds.map(() => '?').join(',')})` : ''}`);
+  const [applications, jobs, limits] = await Promise.all([
+    jobIds ? applicationQuery.bind(...jobIds).all<any>() : applicationQuery.all<any>(),
+    db().prepare("SELECT id,data FROM jobs").all<any>(),
+    getSetting("applicationLimits", []) as Promise<ApplicationLimit[]>,
+  ]);
+  const jobById = new Map(jobs.results.map((row: any) => [row.id, JSON.parse(row.data)]));
+  const candidates: { id: string; jobId: string; company: string; title: string; reason: string }[] = [];
+  for (const row of applications.results) {
+    const application = { ...row, ...JSON.parse(row.data) };
+    const job: any = jobById.get(row.job_id);
+    let reason = seasonExclusionReason(job, application);
+    if (!reason && await applicationLimitReached(job, row.company_group, limits)) reason = "公司申请次数上限";
+    if (reason) candidates.push({ id: row.id, jobId: row.job_id, company: job.company, title: job.title, reason });
+  }
+  return candidates;
+}
+async function excludeSeasonApplication(item: { id: string; jobId: string; reason: string }, at = now()) {
+  await db().batch([
+    db().prepare("UPDATE applications SET status='season_excluded',updated=?,data=json_patch(data,?) WHERE id=? AND status IN ('queued','blocked','uncertain') AND NOT EXISTS (SELECT 1 FROM events e WHERE e.application_id=applications.id AND json_extract(e.data,'$.stage')='submitted' AND COALESCE(json_extract(e.data,'$.accepted'),1)=1)")
+      .bind(at, JSON.stringify({ seasonExcluded: fallSeason, seasonExclusionReason: item.reason }), item.id),
+    db().prepare("UPDATE jobs SET data=json_set(data,'$.hidden',1,'$.seasonExcluded',?,'$.seasonExclusionReason',?),updated=? WHERE id=? AND EXISTS (SELECT 1 FROM applications WHERE id=? AND status='season_excluded')")
+      .bind(fallSeason, item.reason, at, item.jobId, item.id),
+  ]);
+}
+async function applySeasonExclusions(jobIds?: string[]) {
+  const candidates = await seasonCandidates(jobIds);
+  const at = now();
+  for (let i = 0; i < candidates.length; i += 50) {
+    const batch = candidates.slice(i, i + 50);
+    await db().batch(batch.flatMap((item) => [
+      db().prepare("UPDATE applications SET status='season_excluded',updated=?,data=json_patch(data,?) WHERE id=? AND status IN ('queued','blocked','uncertain') AND NOT EXISTS (SELECT 1 FROM events e WHERE e.application_id=applications.id AND json_extract(e.data,'$.stage')='submitted' AND COALESCE(json_extract(e.data,'$.accepted'),1)=1)")
+        .bind(at, JSON.stringify({ seasonExcluded: fallSeason, seasonExclusionReason: item.reason }), item.id),
+      db().prepare("UPDATE jobs SET data=json_set(data,'$.hidden',1,'$.seasonExcluded',?,'$.seasonExclusionReason',?),updated=? WHERE id=? AND EXISTS (SELECT 1 FROM applications WHERE id=? AND status='season_excluded')")
+        .bind(fallSeason, item.reason, at, item.jobId, item.id),
+    ]));
+  }
+  const excludedIds = new Set(candidates.flatMap((item) => [item.id, item.jobId]));
+  const tasks = await db().prepare("SELECT id,data FROM tasks WHERE kind='application_help' AND status IN ('pending','blocked')").all<any>();
+  for (const task of tasks.results) {
+    const data = JSON.parse(task.data);
+    if (data.ids?.length && data.ids.every((item: string) => excludedIds.has(item)))
+      await db().prepare("UPDATE tasks SET status='done',data=json_set(data,'$.result',?) WHERE id=?")
+        .bind("相关岗位已按本人要求移出 2026 秋招待处理列表。", task.id).run();
+  }
+  return { season: fallSeason, excluded: candidates.length, byReason: candidates.reduce((counts: Record<string, number>, item) => ({ ...counts, [item.reason]: (counts[item.reason] || 0) + 1 }), {}) };
+}
+async function excludeSeasonJob(job: any, limits: ApplicationLimit[]) {
+  let reason = seasonExclusionReason(job, {});
+  if (!reason && await applicationLimitReached(job, companyGroup(job.company), limits)) reason = "公司申请次数上限";
+  if (!reason || job.seasonExcluded === fallSeason) return job;
+  job.hidden = true;
+  job.seasonExcluded = fallSeason;
+  job.seasonExclusionReason = reason;
+  await saveJob(job);
+  return job;
+}
 async function trackedRequisitions() {
   const rows = await db()
     .prepare("SELECT a.id,a.status,a.updated,j.data AS job_data FROM applications a JOIN jobs j ON j.id=a.job_id")
     .all<{ id: string; status: string; updated: string; job_data: string }>();
   const tracked = new Map<string, { id: string; status: string; updated: string }>();
   const priority = (status: string) =>
-    ["submitting", "uncertain", "submitted", "assessment", "interview", "offer", "rejected", "withdrawn"].includes(status)
+    ["submitting", "uncertain", "submitted", "assessment", "interview", "offer", "rejected", "withdrawn", "season_excluded"].includes(status)
       ? 3
       : status === "blocked"
         ? 2
@@ -287,6 +360,7 @@ export async function POST(req: Request) {
         ...limits.filter((item) => JSON.stringify([item.companyGroup, item.titleKeywords.map((x) => x.toLowerCase()).sort()]) !== key),
         limit,
       ]);
+      await applySeasonExclusions();
       return json({ ok: true, limit });
     }
     if (action === "facts.curated") {
@@ -402,7 +476,9 @@ export async function POST(req: Request) {
     if (action === "jobs.refresh") {
       const ids = z.array(id).min(1).max(6).parse(b.ids);
       const results = [];
-      for (const i of ids) results.push(await refreshJob(await getJob(i)));
+      const limits: ApplicationLimit[] = await getSetting("applicationLimits", []);
+      for (const i of ids) results.push(await excludeSeasonJob(await refreshJob(await getJob(i)), limits));
+      await applySeasonExclusions(ids);
       const rules = await getSetting("rules", defaultRules);
       await patchSetting("rules", { lastJobSync: now() });
       return json({ results });
@@ -442,6 +518,7 @@ export async function POST(req: Request) {
         hidden: false,
       };
       await saveJob(j);
+      await excludeSeasonJob(j, await getSetting("applicationLimits", []));
       return json(j);
     }
     if (action === "job.hide") {
@@ -508,16 +585,23 @@ export async function POST(req: Request) {
       )
         throw Error("确认基本工资需要数值和对应原文");
       await saveJob(j);
+      await excludeSeasonJob(j, await getSetting("applicationLimits", []));
+      await applySeasonExclusions([j.id]);
       return json(j);
     }
     if (action === "applications.queue") {
       const ids = z.array(id).min(1).max(100).parse(b.ids);
       const tracked = await trackedRequisitions();
+      const applicationLimits: ApplicationLimit[] = await getSetting("applicationLimits", []);
       let queued = 0;
       let alreadyTracked = 0;
       for (const i of ids) {
         const j = await getJob(i);
         const key = requisitionKey(j.url);
+        if (j.seasonExcluded === fallSeason || j.active === "closed" || Object.values(j.checks || {}).some((check: any) => check.value === "fail") || await applicationLimitReached(j, companyGroup(j.company), applicationLimits)) {
+          alreadyTracked++;
+          continue;
+        }
         if (tracked.has(key)) {
           alreadyTracked++;
           continue;
@@ -547,6 +631,12 @@ export async function POST(req: Request) {
       }
       return json({ queued, alreadyTracked });
     }
+    if (action === "applications.season.preview") {
+      return json({ season: fallSeason, candidates: await seasonCandidates() });
+    }
+    if (action === "applications.season.exclude") {
+      return json(await applySeasonExclusions());
+    }
     if (action === "application.note") {
       const a = await app(id.parse(b.id));
       const data = {
@@ -564,6 +654,10 @@ export async function POST(req: Request) {
         .prepare("UPDATE applications SET data=?,updated=? WHERE id=?")
         .bind(JSON.stringify(data), now(), a.id)
         .run();
+      const j = await getJob(a.job_id);
+      let reason = seasonExclusionReason(j, { ...a, ...data });
+      if (!reason && await applicationLimitReached(j, a.company_group, await getSetting("applicationLimits", []))) reason = "公司申请次数上限";
+      if (reason && ["queued", "blocked", "uncertain"].includes(a.status)) await excludeSeasonApplication({ id: a.id, jobId: a.job_id, reason });
       return json({ ok: true });
     }
     if (action === "resume.generate") {
@@ -826,6 +920,7 @@ export async function POST(req: Request) {
         ...(input.jobsSynced ? { lastDiscoveryCycle: now() } : {}),
         runnerNote: input.note || "",
       });
+      if (input.jobsSynced) await applySeasonExclusions();
       return json({ ok: true });
     }
     if (action === "applications.claim") {
@@ -876,35 +971,20 @@ export async function POST(req: Request) {
         // The owner prefiltered the candidate library, but an explicitly
         // closed posting must leave the queue before another claim.
         if (j.active === "closed") {
-          await db()
-            .prepare(
-              "UPDATE applications SET status='blocked',updated=?,data=json_patch(data,?) WHERE id=? AND status='queued'",
-            )
-            .bind(
-              now(),
-              JSON.stringify({ notes: "官网岗位已关闭，停止领取和投递。" }),
-              a.id,
-            )
-            .run();
+          await excludeSeasonApplication({ id: a.id, jobId: a.job_id, reason: "岗位已关闭" });
           continue;
         }
         const eligibility = evaluate(j, rules);
         if (eligibility.state === "excluded") {
           const reason = `官网硬性条件不符：${eligibility.reasons.join("；")}`;
-          await db()
-            .prepare("UPDATE applications SET status='blocked',updated=?,data=json_patch(data,?) WHERE id=? AND status='queued'")
-            .bind(now(), JSON.stringify({ blockReason: reason, notes: reason }), a.id)
-            .run();
+          await excludeSeasonApplication({ id: a.id, jobId: a.job_id, reason: "岗位条件不符" });
           limitBlocks.push(reason);
           continue;
         }
         const missingLanguage = missingSpokenLanguage(j.title, facts);
         if (missingLanguage) {
           const reason = `岗位要求 ${missingLanguage} 语言能力，但已确认经历中没有该能力。`;
-          await db()
-            .prepare("UPDATE applications SET status='blocked',updated=?,data=json_patch(data,?) WHERE id=? AND status='queued'")
-            .bind(now(), JSON.stringify({ blockReason: reason, notes: reason }), a.id)
-            .run();
+          await excludeSeasonApplication({ id: a.id, jobId: a.job_id, reason: "岗位条件不符" });
           limitBlocks.push(reason);
           continue;
         }
@@ -914,10 +994,7 @@ export async function POST(req: Request) {
           applicationLimits,
         );
         if (limitBlock) {
-          await db()
-            .prepare("UPDATE applications SET status='blocked',updated=?,data=json_patch(data,?) WHERE id=? AND status='queued'")
-            .bind(now(), JSON.stringify({ blockReason: limitBlock, notes: limitBlock }), a.id)
-            .run();
+          await excludeSeasonApplication({ id: a.id, jobId: a.job_id, reason: "公司申请次数上限" });
           limitBlocks.push(limitBlock);
           continue;
         }
@@ -1061,6 +1138,10 @@ export async function POST(req: Request) {
         )
         .bind(status, now(), JSON.stringify(data), a.id)
         .run();
+      const j = await getJob(a.job_id);
+      let reason = seasonExclusionReason(j, data);
+      if (!reason && await applicationLimitReached(j, a.company_group, await getSetting("applicationLimits", []))) reason = "公司申请次数上限";
+      if (reason) await excludeSeasonApplication({ id: a.id, jobId: a.job_id, reason });
       return json({ ok: true });
     }
     if (action === "event.record") {
