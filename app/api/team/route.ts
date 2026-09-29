@@ -16,7 +16,7 @@ export async function GET(req:Request){
    db().prepare('SELECT * FROM team_recommendations ORDER BY created DESC').all<any>(),
    db().prepare('SELECT a.*,r.company,r.title,r.url,r.location,r.lane FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id ORDER BY a.updated DESC').all<any>(),
    db().prepare('SELECT * FROM team_application_events ORDER BY created DESC').all<any>(),
-   db().prepare('SELECT a.id,a.job_id,a.status,a.updated,a.data,j.data AS job_data FROM applications a JOIN jobs j ON j.id=a.job_id ORDER BY a.updated DESC').all<any>(),
+   db().prepare("SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id ORDER BY a.updated DESC").all<any>(),
    db().prepare('SELECT application_id,occurred,data FROM events WHERE application_id IS NOT NULL ORDER BY occurred DESC').all<any>(),
    db().prepare("SELECT id,data FROM jobs WHERE COALESCE(json_extract(data,'$.hidden'),0)=0 ORDER BY CAST(json_extract(data,'$.score') AS REAL) DESC LIMIT 120").all<any>(),
    db().prepare('SELECT * FROM team_files ORDER BY created DESC').all<any>(),
@@ -29,8 +29,14 @@ export async function GET(req:Request){
   ]);
   const users=members.results.map(m=>({...m,resumeShared:!!m.resume_shared}));
   const shared=(email:string)=>email===me.email||users.some(u=>u.email===email&&u.resumeShared);
+  const eventsByApplication=new Map<string,any[]>();
+  for(const event of ownerEvents.results){
+   const entries=eventsByApplication.get(event.application_id)||[];
+   entries.push({id:event.occurred,created:event.occurred,...JSON.parse(event.data)});
+   eventsByApplication.set(event.application_id,entries);
+  }
   const applications=[
-   ...ownerApps.results.map(a=>{const j=JSON.parse(a.job_data),data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:j.company,title:j.title,url:j.url,location:j.location||'',lane:j.lane||'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:ownerEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.occurred,created:e.occurred,...JSON.parse(e.data)}))}}),
+   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:eventsByApplication.get(a.id)||[]}}),
    ...teamApps.results.map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated));
   const files=[
