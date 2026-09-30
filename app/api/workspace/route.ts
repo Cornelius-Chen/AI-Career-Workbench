@@ -185,20 +185,14 @@ async function trackedRequisitions() {
 }
 async function snapshot() {
   const [
-    jobs,
     facts,
-    applications,
-    events,
     resumes,
     tasks,
     profile,
     rules,
     files,
   ] = await Promise.all([
-    list("jobs"),
     list("facts"),
-    list("applications"),
-    list("events"),
     list("resumes"),
     list("tasks"),
     getSetting("profile", defaultProfile),
@@ -210,16 +204,10 @@ async function snapshot() {
     .bind(nyDay())
     .first<any>();
   return {
-    jobs: jobs
-      .map((j) => ({
-        ...j,
-        description: undefined,
-        eligibility: evaluate(j as any, rules),
-      }))
-      .sort((a, b) => b.score - a.score),
+    jobs: [],
     facts,
-    applications,
-    events: events.sort((a, b) => b.occurred.localeCompare(a.occurred)),
+    applications: [],
+    events: [],
     resumes,
     tasks,
     profile,
@@ -235,25 +223,29 @@ async function snapshot() {
 export async function GET(req: Request) {
   try {
     await owner(true);
-    await init();
     const u = new URL(req.url);
+    const batch = u.searchParams.get("batch");
+    if (batch) {
+      const offset = Number(u.searchParams.get("offset") || 0);
+      const query = batch === "jobs"
+        ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',j.id,'canonical',j.canonical,'updated',j.updated),json_remove(j.data,'$.description'))),'[]') AS payload FROM (SELECT * FROM jobs ORDER BY updated DESC LIMIT 200 OFFSET ?) j`
+        : batch === "applications"
+          ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',a.id,'job_id',a.job_id,'company_group',a.company_group,'status',a.status,'resume_id',a.resume_id,'lease',a.lease,'lease_until',a.lease_until,'updated',a.updated),a.data)),'[]') AS payload FROM (SELECT * FROM applications WHERE status!='season_excluded' ORDER BY updated DESC LIMIT 200 OFFSET ?) a`
+          : batch === "events"
+            ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',e.id,'application_id',e.application_id,'source_key',e.source_key,'occurred',e.occurred),e.data)),'[]') AS payload FROM (SELECT * FROM events ORDER BY occurred DESC LIMIT 200 OFFSET ?) e`
+            : null;
+      if (!query) throw Error("未知数据类型");
+      const row = await db().prepare(query).bind(offset).first<{ payload: string }>();
+      return new Response(row!.payload, { headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" } });
+    }
+    await init();
     if (u.searchParams.has("job"))
       return json(await getJob(u.searchParams.get("job")!));
     if (u.searchParams.get("export") === "applications") {
-      const s = await snapshot();
+      const applications = await db().prepare("SELECT json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,a.status,json_extract(j.data,'$.url') AS url,a.updated,a.resume_id FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status!='season_excluded' ORDER BY a.updated DESC").all<any>();
       const rows = [
         ["公司", "岗位", "进度", "申请链接", "更新时间", "简历版本"],
-        ...s.applications.map((a) => {
-          const j = s.jobs.find((j) => j.id === a.job_id);
-          return [
-            j?.company,
-            j?.title,
-            a.status,
-            j?.url,
-            a.updated,
-            a.resume_id,
-          ];
-        }),
+        ...applications.results.map((a) => [a.company,a.title,a.status,a.url,a.updated,a.resume_id]),
       ];
       return new Response(
         "\ufeff" + rows.map((r) => r.map(safeCsv).join(",")).join("\r\n"),
@@ -1043,8 +1035,12 @@ export async function POST(req: Request) {
     if (action === "application.begin") {
       const a = await app(id.parse(b.id));
       const token = id.parse(b.lease);
-      const s = await snapshot();
-      if (readiness(s.profile, s.rules, s.facts).length)
+      const [profile, rules, facts] = await Promise.all([
+        getSetting("profile", defaultProfile),
+        getSetting("rules", defaultRules),
+        list("facts"),
+      ]);
+      if (readiness(profile, rules, facts).length)
         throw Error("首次设置未完成或投递已暂停");
       if (
         a.lease !== token ||
@@ -1057,10 +1053,10 @@ export async function POST(req: Request) {
       if (prior && prior.id !== a.id)
         throw Error(`同一招聘编号已有申请记录（${prior.status}），禁止重复提交`);
       if (!j || j.active !== "active") throw Error("岗位已关闭");
-      const eligibility = evaluate(j, s.rules);
+      const eligibility = evaluate(j, rules);
       if (eligibility.state === "excluded")
         throw Error(`官网硬性条件不符：${eligibility.reasons.join("；")}`);
-      const missingLanguage = missingSpokenLanguage(j.title, s.facts);
+      const missingLanguage = missingSpokenLanguage(j.title, facts);
       if (missingLanguage)
         throw Error(`岗位要求 ${missingLanguage} 口语，但已确认经历中没有该语言能力`);
       const limitBlock = await applicationLimitReached(
@@ -1087,7 +1083,7 @@ export async function POST(req: Request) {
           a.company_group,
           now(),
           nyDay(),
-          s.rules.maxDaily,
+          rules.maxDaily,
           a.company_group,
           cap,
         )
