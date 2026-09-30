@@ -22,8 +22,7 @@ const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   if (env.CAREER_LOCAL_MEMBER) {
-    const owner = env.CAREER_LOCAL_MEMBER === 'Cornelius-Chen';
-    return {userId:`github:${owner?env.GITHUB_OWNER_ID:env.GITHUB_BROTHER_ID}`,displayName:env.CAREER_LOCAL_MEMBER,email:owner?env.CAREER_OWNER_EMAIL:env.CAREER_BROTHER_EMAIL,fullName:null};
+    return {userId:env.CAREER_LOCAL_USER_ID!,displayName:env.CAREER_LOCAL_MEMBER,email:env.CAREER_LOCAL_EMAIL!,fullName:null};
   }
   if (env.GITHUB_CLIENT_ID) return githubUser();
   const requestHeaders = await headers();

@@ -12,6 +12,11 @@ declare namespace Cloudflare {
     CAREER_OWNER_EMAIL: string;
     CAREER_BROTHER_EMAIL: string;
     CAREER_LOCAL_MEMBER?: string;
+    CAREER_LOCAL_EMAIL?: string;
+    CAREER_LOCAL_USER_ID?: string;
+    CAREER_LOCAL_MODE?: string;
+    CAREER_SYNC_CONFIGURED?: string;
+    CAREER_EMPTY_START?: string;
     CAREER_LOCAL_SYNC_TOKEN?: string;
     CAREER_LOCAL_SYNC_URL?: string;
     CAREER_ARCHIVED?: string;

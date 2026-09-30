@@ -295,7 +295,7 @@ export async function POST(req: Request) {
           startDate: z.string().regex(/^2027-\d{2}-\d{2}$/),
           degree: z.string().min(1).max(150),
           school: z.string().min(1).max(150),
-          optStatus: z.enum(["planned", "pending", "approved"]),
+          optStatus: z.enum(["unknown", "planned", "pending", "approved"]),
           currentAuthorization: z.enum(["unknown", "yes", "no"]),
           futureSponsorship: z.enum(["unknown", "yes", "no"]),
           confirmed: z.boolean(),
@@ -318,7 +318,7 @@ export async function POST(req: Request) {
         .object({
           paused: z.boolean().optional(),
           historyReviewed: z.boolean().optional(),
-          minBase: z.number().int().min(90000).max(1000000).optional(),
+          minBase: z.number().int().min(0).max(1000000).optional(),
           maxDaily: z.number().int().min(1).max(1000000).optional(),
           allowUnknownSponsorship: z.boolean().optional(),
         })

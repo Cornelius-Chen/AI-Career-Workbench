@@ -1,5 +1,6 @@
 import {getFile,db} from '@/lib/store';
 import {decryptTeamFile} from '@/lib/team-crypto';
+import {workspacePreferences} from '@/lib/workspace-preferences';
 import {OWNER_EMAIL,teamError,teamUser} from '@/lib/team';
 
 export const dynamic='force-dynamic';
@@ -11,6 +12,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
   const file=teamFile||await db().prepare('SELECT * FROM files WHERE id=?').bind(id).first<any>();
   if(!file)return new Response('文件不存在',{status:404});
   const ownerEmail=teamFile?teamFile.member_email:OWNER_EMAIL;
+  if((await workspacePreferences()).mode==='solo'&&ownerEmail!==me.email)throw Error('FORBIDDEN');
   if(ownerEmail!==me.email){
    const member=await db().prepare('SELECT resume_shared FROM team_members WHERE email=?').bind(ownerEmail).first<any>();
    if(!member?.resume_shared)throw Error('FORBIDDEN');

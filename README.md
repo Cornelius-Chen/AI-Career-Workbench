@@ -1,36 +1,46 @@
-# AI 求职协作工作台
+# AI Career Workbench · AI 求职工作台
 
-这是双人平台的唯一源码。当前日常入口为各自电脑的 http://127.0.0.1:4317/team 。云端工作台已暂停读写，保留迁移时的历史数据库；旧 `chatgpt.site` 项目已经退役。不要从旧项目恢复源码或覆盖本地新记录。
+以单人为默认的本地求职工作台，也可以开启两人或多人协作。整理个人资料和简历、研究官网岗位、选择申请计划、记录真实投递证据，并让自己的 Agent 留下有依据的发现与建议。
 
-两个人各自运行本地工作台，通过独立私有 GitHub 仓库交换加密更新，共享岗位、投递进度、任务和 Agent 留言。本机身份在安装时指定，GitHub 同步时校验本人账号。每个人可以选择是否向对方共享简历文件。安装和 Agent 使用步骤见 [双人本地工作台](docs/LOCAL-WORKBENCH.md)。
+## 单人开始
 
-日常入口是 `/team`：其中的「我的工作台」显示本人岗位、申请、待办与资料；「双方概览」「双方申请」「岗位地图」显示共享进展。地图默认统计已确认投递，并单列无法在美国地图定位的记录。计划投递和待确认不计作已投递。
+需要 Node.js 22.13+ 与 Git，无需 GitHub 登录、Cloudflare 账号或 API 密钥：
 
-页面读取本机数据库，不消耗云端 D1 额度。点击「上传我的更新」「拉取伙伴更新」或「双向同步」与另一台电脑交换数据；冲突保留双方版本，选择后再同步。申请记录每次按 200 条读取，页面使用分类、筛选和分页。
+```sh
+git clone https://github.com/Cornelius-Chen/AI-Career-Workbench.git
+cd AI-Career-Workbench
+npm ci
+npm run local:setup -- --name "我的名字"
+npm run local:start
+```
 
-「Agent 协作」只展示 Agent 提交的结构化发现、依据和下一步；人的研究要求单独保存。共享岗位只接收 Agent 提交且附有依据的建议，成员可以加入申请计划或跳过。两人的求职类型分别设置：工作台所有者找 2027 年全职，另一位成员找 2027 年暑期实习。Agent 推荐时要核实官方岗位的类型与时间，指定推荐对象；类型或年份不匹配的岗位不能加入该成员的申请计划。网站通过 WebMCP 为已登录的 Agent 提供读取共享资料、留言、任务和推荐岗位的工具。Agent 需主动访问网站使用这些工具；网站本身不会在后台自动运行模型。
+打开 http://127.0.0.1:4317/team ，按「使用引导」填写目标、上传 PDF / DOCX、复制指令给自己的 Agent，再查看岗位推荐。以后双击 `start-local.command` 启动。新安装是空白数据库，不带作者的资料、简历、投递历史或示例岗位。
 
-2026 秋招中，经官方证据确认条件不符、达到雇主申请上限或岗位关闭的待投记录，通过 `applications.season.exclude` 移出当前列表。历史证据和已确认投递继续保留；不明确的记录仍待本人核对。此规则和正式站代码一起维护。
+可以把 [Agent 安装与接手指令](docs/AGENT-START.md) 直接交给自己的 Agent。
 
-## 本地运行
+完整说明：[开始使用](docs/GETTING-STARTED.md) · [可选协作与 Agent 操作](docs/LOCAL-WORKBENCH.md)。
 
-需要 Node.js 22.13 或更新版本、Git 和 GitHub CLI。哥哥的本机已迁入正式 D1 导出的数据。弟弟接受私有数据仓库邀请、接收私下传递的密钥安装包后，按 [安装说明](docs/LOCAL-WORKBENCH.md) 运行 `npm ci`、`npm run local:setup -- --member Anson-F --credentials /完整路径/career-local-credentials.json`、`npm run local:start`。以后双击 `start-local.command` 即可启动。
+## 使用方式
 
-代码更新后重新构建，保留 `.local/`，其中包含本机数据库、密钥、附件和同步状态。
+- **个人工作台**：本人申请、分类筛选、测评与面试、私人资料与简历版本。
+- **岗位推荐**：Agent 核实官方来源、类型和时间后给出建议；本人选择加入申请计划或跳过。
+- **岗位地图**：推荐/投递可切换，无法定位的岗位保留在列表；当前底图覆盖美国。
+- **Agent 信息**：只展示真实发现、依据和下一步；研究要求单独保存。网页不会自动运行或唤醒 Agent。
+- **空间设置**：默认单人，协作可开启；切回单人停止本机共享同步并保留原有记录。
+- **可选协作**：成员数量不固定，各自维护目标、申请计划和简历共享选择；私有 GitHub 数据仓库交换加密更新，有冲突时保留不同版本供选择。
 
-## 云端归档与部署
+单人数据保存在 `.local/`。公开仓库只提交源码；协作数据经过 AES-256-GCM 加密后写入另一个私有仓库，密钥私下交给受邀成员。数据邀请不等于源代码写入权限。
 
-`CAREER_ARCHIVED=1` 使云端旧工作台停止数据库读写并显示本地入口。当前不把云端数据库作为日常数据来源。`wrangler.jsonc` 配置共享 Worker、D1 和存储附件的 KV，并设置以下 Worker Secrets：
+当前完整私人经历与投递规则面向美国求职，协作成员共享的范围见安装说明。计划、待确认与没有成功凭证的操作不算已投递。简历上传不自动确认其中事实，也不开始提交申请。
 
-- `CAREER_OWNER_EMAIL` 和 `CAREER_BROTHER_EMAIL`：两位成员现有数据所用的邮箱。
-- `GITHUB_CLIENT_SECRET`：GitHub OAuth 应用的密钥。
-- `GITHUB_SESSION_SECRET`：用于签发登录会话的随机密钥。
-- `TEAM_FILE_KEY`：用于加密共享简历文件的随机密钥。
+## 更新与检查
 
-公开代码仓库只包含空的初始数据。简历、投递历史、数据库内容和密钥不得提交到公开代码仓库；同步程序只把加密的数据提交到独立私有仓库，密钥不进任何 Git 仓库。
+更新前停止网站，保留 `.local/`，拉取代码后执行 `npm ci`、`npm run local:setup`，再启动。同步只更新资料，程序改动需要各自拉取并重新构建。
 
-运行 `npm run build:standalone` 构建独立 Worker，再运行 `npx wrangler deploy` 发布。对 `main` 的自动发布需要在 Cloudflare Workers Builds 中连接此仓库，构建命令设为 `npm run build:standalone`，部署命令设为 `npx wrangler deploy`；仓库写入权限和发布权限由这个连接共同决定。
+```sh
+npm exec tsc -- --noEmit
+npm run test:sync
+npm run build:standalone
+```
 
-## 检查
-
-运行 `npm exec tsc -- --noEmit` 进行类型检查，`npm run test:sync` 验证两份独立副本合并、并发冲突、冲突解决与简历共享过滤。
+本项目旧云端和 `chatgpt.site` 入口已退役，不覆盖本地新记录。日常修改仅使用当前代码库。

@@ -1,7 +1,9 @@
 import {z} from 'zod';
 import {env} from 'cloudflare:workers';
-import {db} from '@/lib/store';
-import {OWNER_EMAIL,BROTHER_EMAIL,teamError,teamUser} from '@/lib/team';
+import {db,setSetting} from '@/lib/store';
+import {safeCsv} from '@/lib/domain';
+import {workspacePreferences} from '@/lib/workspace-preferences';
+import {OWNER_EMAIL,teamError,teamUser} from '@/lib/team';
 
 export const dynamic='force-dynamic';
 const reply=(value:any)=>Response.json(value,{headers:{'Cache-Control':'private, no-store'}});
@@ -15,6 +17,15 @@ export async function GET(req:Request){
   const me=await teamUser();
   const url=new URL(req.url);
   const view=url.searchParams.get('view');
+  const preferences=await workspacePreferences(),collaborative=preferences.mode==='collaboration';
+  if(view==='preferences')return reply(preferences);
+  if(view==='export'){
+   const legacy=me.email===OWNER_EMAIL?await db().prepare("SELECT json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,a.status,json_extract(a.data,'$.notes') AS notes FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status!='season_excluded'").all<any>():{results:[]};
+   const plans=await db().prepare('SELECT r.company,r.title,r.url,a.status,a.notes FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id WHERE a.member_email=?').bind(me.email).all<any>();
+   const rows=[['公司','岗位','官方链接','状态','备注'],...[...legacy.results,...plans.results].map(row=>[row.company,row.title,row.url,row.status,row.notes])];
+   return new Response('\uFEFF'+rows.map(row=>row.map(safeCsv).join(',')).join('\n'),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="applications.csv"','Cache-Control':'private, no-store'}});
+  }
+  if(!collaborative&&me.email!==OWNER_EMAIL&&['owner-applications','owner-events'].includes(view||''))return reply([]);
   if(view==='owner-applications'){
    const cursor=url.searchParams.get('cursor')||'';
    const row=await db().prepare(`SELECT COALESCE(json_group_array(json_object(
@@ -50,8 +61,8 @@ export async function GET(req:Request){
    db().prepare('SELECT * FROM team_recommendations ORDER BY created DESC').all<any>(),
    db().prepare('SELECT a.*,r.company,r.title,r.url,r.location,r.lane,r.opportunity_type,r.period FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id ORDER BY a.updated DESC').all<any>(),
    db().prepare('SELECT * FROM team_application_events ORDER BY created DESC').all<any>(),
-   view==='agent'?db().prepare(`SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status IN ('submitted','assessment','interview','offer','rejected','withdrawn') ORDER BY a.updated DESC`).all<any>():Promise.resolve({results:[]}),
-   view==='agent'?db().prepare("SELECT id,json_extract(data,'$.company') AS company,json_extract(data,'$.title') AS title,json_extract(data,'$.url') AS url,json_extract(data,'$.location') AS location,json_extract(data,'$.lane') AS lane,json_extract(data,'$.score') AS score,json_extract(data,'$.eligibility') AS eligibility FROM jobs WHERE COALESCE(json_extract(data,'$.hidden'),0)=0 ORDER BY CAST(json_extract(data,'$.score') AS REAL) DESC LIMIT 120").all<any>():Promise.resolve({results:[]}),
+   view==='agent'&&(collaborative||me.email===OWNER_EMAIL)?db().prepare(`SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status IN ('submitted','assessment','interview','offer','rejected','withdrawn') ORDER BY a.updated DESC`).all<any>():Promise.resolve({results:[]}),
+   view==='agent'&&(collaborative||me.email===OWNER_EMAIL)?db().prepare("SELECT id,json_extract(data,'$.company') AS company,json_extract(data,'$.title') AS title,json_extract(data,'$.url') AS url,json_extract(data,'$.location') AS location,json_extract(data,'$.lane') AS lane,json_extract(data,'$.score') AS score,json_extract(data,'$.eligibility') AS eligibility FROM jobs WHERE COALESCE(json_extract(data,'$.hidden'),0)=0 ORDER BY CAST(json_extract(data,'$.score') AS REAL) DESC LIMIT 120").all<any>():Promise.resolve({results:[]}),
    db().prepare('SELECT * FROM team_files ORDER BY created DESC').all<any>(),
    db().prepare('SELECT id,name,type,created,data FROM files ORDER BY created DESC').all<any>(),
    db().prepare('SELECT * FROM team_messages ORDER BY created DESC LIMIT 100').all<any>(),
@@ -61,26 +72,31 @@ export async function GET(req:Request){
    db().prepare('SELECT recommendation_id,member_email,decision FROM team_recommendation_decisions').all<any>(),
    db().prepare("SELECT status,COUNT(*) AS n FROM applications WHERE status!='season_excluded' GROUP BY status").all<{status:string,n:number}>()
   ]);
-  const users=members.results.map(m=>({...m,resumeShared:!!m.resume_shared}));
-  const shared=(email:string)=>email===me.email||users.some(u=>u.email===email&&u.resumeShared);
+  const users=members.results.filter(member=>collaborative||member.email===me.email).map(m=>({...m,resumeShared:!!m.resume_shared}));
+  const shared=(email:string)=>email===me.email||collaborative&&users.some(u=>u.email===email&&u.resumeShared);
   const ownerCounts=Object.fromEntries(ownerStatusCounts.results.map(row=>[row.status,row.n]));
-  const ownerApplicationCount=ownerStatusCounts.results.reduce((sum,row)=>sum+row.n,0);
+  const ownerApplicationCount=collaborative||me.email===OWNER_EMAIL?ownerStatusCounts.results.reduce((sum,row)=>sum+row.n,0):0;
   const applications=[
    ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/\bintern(?:ship)?\b|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:[]}}),
-   ...teamApps.results.map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
+   ...teamApps.results.filter(a=>collaborative||a.member_email===me.email).map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated));
   const files=[
    ...teamFiles.results.filter(f=>shared(f.member_email)).map(f=>({id:f.id,memberEmail:f.member_email,name:f.name,type:f.type,size:f.size,created:f.created,url:'/api/team/files/'+f.id})),
    ...ownerFiles.results.filter(()=>shared(OWNER_EMAIL)).map(f=>({id:f.id,memberEmail:OWNER_EMAIL,name:f.name,type:f.type,size:JSON.parse(f.data).size||null,created:f.created,url:'/api/team/files/'+f.id}))
   ];
   const original=legacyProfile?JSON.parse(legacyProfile.value):{};
-  const careerProfiles=users.map(member=>profiles.results.find(profile=>profile.member_email===member.email)||{member_email:member.email,headline:member.role==='owner'?[original.school,original.degree].filter(Boolean).join(' · '):'',location:member.role==='owner'?original.location||'':'',focus:'',skills:'',start_date:member.role==='owner'?original.startDate||'':'2027 夏季',target_type:member.role==='owner'?'full_time':'summer_intern',updated:''});
-  const sharedRecommendations=recommendations.results.map(r=>({...r,coapply:!!r.coapply,myDecision:decisions.results.find(d=>d.recommendation_id===r.id&&d.member_email===me.email)?.decision||''}));
-  const agentNotes=messages.results.filter(message=>message.author_kind==='agent').map(message=>({...message,...JSON.parse(message.content)}));
-  const requests=messages.results.filter(message=>message.author_kind==='person');
+  const careerProfiles=users.map(member=>profiles.results.find(profile=>profile.member_email===member.email)||{member_email:member.email,headline:member.role==='owner'?[original.school,original.degree].filter(Boolean).join(' · '):'',location:member.role==='owner'?original.location||'':'',focus:'',skills:'',start_date:member.role==='owner'?original.startDate||'':'',target_type:'full_time',updated:''});
+  const sharedRecommendations=recommendations.results.filter(r=>collaborative||r.target_email===me.email||r.author_email===me.email&&!r.target_email).map(r=>({...r,coapply:!!r.coapply,myDecision:decisions.results.find(d=>d.recommendation_id===r.id&&d.member_email===me.email)?.decision||''}));
+  const agentNotes=messages.results.filter(message=>message.author_kind==='agent'&&(collaborative||message.member_email===me.email)).map(message=>({...message,...JSON.parse(message.content)}));
+  const requests=messages.results.filter(message=>message.author_kind==='person'&&(collaborative||message.member_email===me.email));
   const candidates=jobs.results;
-  if(view==='agent')return reply({members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:users.map(member=>({email:member.email,applications:member.email===OWNER_EMAIL?ownerApplicationCount:applications.filter(a=>a.memberEmail===member.email).length,submitted:member.email===OWNER_EMAIL?Object.entries(ownerCounts).reduce((sum,[status,n])=>sum+(progressed.has(status)?Number(n):0),0):applications.filter(a=>a.memberEmail===member.email&&progressed.has(a.status)).length,uncertain:member.email===OWNER_EMAIL?Number(ownerCounts.uncertain||0):applications.filter(a=>a.memberEmail===member.email&&a.status==='uncertain').length,queued:member.email===OWNER_EMAIL?Number(ownerCounts.queued||0):applications.filter(a=>a.memberEmail===member.email&&a.status==='queued').length})),confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:applications.find(application=>application.memberEmail===OWNER_EMAIL&&application.url===url)?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
-  return reply({me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared,local:!!env.CAREER_LOCAL_MEMBER},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,ownerApplicationCount,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results});
+  const memberStats=users.map(member=>{
+   const mine=applications.filter(application=>application.memberEmail===member.email&&!application.legacy);
+   const legacy=member.email===OWNER_EMAIL?ownerCounts:{};
+   return {email:member.email,applications:Object.values(legacy).reduce((sum,n)=>sum+Number(n),0)+mine.length,submitted:Object.entries(legacy).reduce((sum,[status,n])=>sum+(progressed.has(status)?Number(n):0),0)+mine.filter(application=>progressed.has(application.status)).length,uncertain:Number(legacy.uncertain||0)+mine.filter(application=>application.status==='uncertain').length,queued:Number(legacy.queued||0)+mine.filter(application=>application.status==='queued').length};
+  });
+  if(view==='agent')return reply({mode:preferences.mode,currentMemberEmail:me.email,members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:memberStats,confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:applications.find(application=>application.memberEmail===OWNER_EMAIL&&application.url===url)?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
+  return reply({entryUrl:new URL(req.url).origin+'/team',preferences,syncConfigured:!!env.CAREER_SYNC_CONFIGURED,me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared,local:!!env.CAREER_LOCAL_MEMBER},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,ownerApplicationCount,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results.filter(task=>collaborative||task.created_by_email===me.email||task.assigned_to_email===me.email)});
  }catch(e){return teamError(e)}
 }
 
@@ -91,6 +107,11 @@ export async function POST(req:Request){
   if(origin&&origin!==new URL(req.url).origin)throw Error('FORBIDDEN');
   const input:any=await req.json();
   const action=z.string().parse(input.action);
+  if(action==='workspace.mode'){
+   const mode=z.enum(['solo','collaboration']).parse(input.mode);await setSetting('workspace.preferences',{mode});return reply({ok:true});
+  }
+  const collaborative=(await workspacePreferences()).mode==='collaboration';
+  const memberEmail=async(value:string)=>{const email=z.string().parse(value);const member=await db().prepare('SELECT email FROM team_members WHERE email=?').bind(email).first();if(!member||!collaborative&&email!==me.email)throw Error('请选择当前空间中的成员');return email};
   if(action==='resume.share'){
    const enabled=z.boolean().parse(input.enabled);
    await db().prepare('UPDATE team_members SET resume_shared=? WHERE email=?').bind(enabled?1:0,me.email).run();
@@ -107,7 +128,7 @@ export async function POST(req:Request){
    const data=job?JSON.parse(job.data):z.object({company:z.string().min(1).max(160),title:z.string().min(1).max(200),url:z.string().url().refine(value=>value.startsWith('https://'),'请填写 HTTPS 岗位链接'),location:z.string().max(120),lane:z.string().max(100)}).parse(input);
    const note=z.string().trim().min(20).max(1000).parse(input.note);
    const evidence=z.string().trim().min(8).max(1000).parse(input.evidence);
-   const targetEmail=z.enum([OWNER_EMAIL,BROTHER_EMAIL]).parse(input.targetEmail);
+   const targetEmail=await memberEmail(input.targetEmail);
    const opportunityType=z.enum(['full_time','summer_intern']).parse(input.opportunityType);
    const period=z.string().trim().min(4).max(80).parse(input.period);
    const coapply=z.boolean().parse(input.coapply||false);
@@ -116,9 +137,9 @@ export async function POST(req:Request){
    const targetYear=targetProfile.start_date.match(/20\d{2}/)?.[0];
    if(targetYear&&!period.includes(targetYear))throw Error('岗位时间与推荐对象的目标年份不符');
    if(coapply){
-    const otherEmail=targetEmail===OWNER_EMAIL?BROTHER_EMAIL:OWNER_EMAIL;
-    const otherProfile=await db().prepare('SELECT target_type FROM team_profiles WHERE member_email=?').bind(otherEmail).first<any>();
-    if(otherProfile.target_type!==opportunityType)throw Error('两人的求职类型不同，请分别推荐对应岗位');
+    const profiles=await db().prepare('SELECT target_type,start_date FROM team_profiles').all<any>();
+    const matching=profiles.results.filter(profile=>profile.target_type===opportunityType&&(!profile.start_date.match(/20\d{2}/)?.[0]||period.includes(profile.start_date.match(/20\d{2}/)[0])));
+    if(!collaborative||matching.length<2)throw Error('共同申请需要至少两位成员的求职类型和目标年份符合');
    }
    const id=crypto.randomUUID();
    await db().prepare("INSERT INTO team_recommendations(id,author_email,company,title,url,location,lane,note,source_kind,target_email,opportunity_type,period,evidence,coapply,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET author_email=excluded.author_email,note=excluded.note,source_kind='agent',target_email=excluded.target_email,opportunity_type=excluded.opportunity_type,period=excluded.period,evidence=excluded.evidence,coapply=excluded.coapply").bind(id,me.email,data.company,data.title,data.url,data.location||'',data.lane||'',note,'agent',coapply?'':targetEmail,opportunityType,period,evidence,coapply?1:0,now()).run();
@@ -180,7 +201,7 @@ export async function POST(req:Request){
   if(action==='agent_task.create'){
    const title=z.string().trim().min(1).max(180).parse(input.title);
    const details=z.string().max(4000).parse(input.details||'');
-   const assignedToEmail=z.enum([OWNER_EMAIL,BROTHER_EMAIL]).nullable().parse(input.assignedToEmail||null);
+   const assignedToEmail=input.assignedToEmail?await memberEmail(input.assignedToEmail):null;
    const id=crypto.randomUUID(),created=now();
    await db().prepare('INSERT INTO team_agent_tasks(id,created_by_email,assigned_to_email,title,details,status,created,updated) VALUES(?,?,?,?,?,?,?,?)').bind(id,me.email,assignedToEmail,title,details,'open',created,created).run();
    return reply({id});

@@ -1,6 +1,6 @@
 import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
-import {readFile,writeFile,mkdir,readdir,access} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
 import path from 'node:path';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -16,10 +16,10 @@ export function sharedSnapshot(all,member,email){
  state.team_files=Object.fromEntries(Object.entries(state.team_files).filter(([,row])=>sharing[row.member_email]));
  return state;
 }
-export function differences(base,current,member){
+export function differences(base,current,member,ownerMember){
  const changes=[];
  for(const [table,rows] of Object.entries(current)){
-  if(member!=='Cornelius-Chen'&&['jobs','applications','events','files'].includes(table))continue;
+  if(member!==ownerMember&&['jobs','applications','events','files'].includes(table))continue;
   for(const key of new Set([...Object.keys(base[table]||{}),...Object.keys(rows)])){
    const before=base[table]?.[key]||null,row=rows[key]||null;
    if(hash(before)!==hash(row))changes.push({table,key,parents:[hash(before)],row});
@@ -56,11 +56,11 @@ export class LocalSync{
   await mkdir(this.root,{recursive:true});
   if(!await exists(this.repo))await exec('gh',['repo','clone',this.credentials.repo,this.repo]);
   await this.git('config','user.name',this.config.member);
-  await this.git('config','user.email',`${this.credentials.ids[this.config.member]}+${this.config.member}@users.noreply.github.com`);
+  await this.git('config','user.email',`${this.credentials.members.find(member=>member.login===this.config.member).id}+${this.config.member}@users.noreply.github.com`);
   if(!await exists(this.stateFile))await saveJSON(this.stateFile,{applied:[],conflicts:[],lastUpload:null,lastPull:null});
  }
  async requireIdentity(){const {stdout}=await exec('gh',['api','user','--jq','.login']);if(stdout.trim()!==this.config.member)throw Error(`请在 GitHub CLI 登录 ${this.config.member}，当前为 ${stdout.trim()}`)}
- async status(){const state=await this.state();return {member:this.config.member,repo:this.credentials.repo,lastUpload:state.lastUpload,lastPull:state.lastPull,conflicts:state.conflicts.map(item=>({id:item.id,table:item.table,key:item.key,local:item.local,remote:item.row,author:item.author})),private:true}}
+ async status(){if(!this.credentials.repo)return {member:this.config.member,configured:false,conflicts:[]};const state=await this.state();return {configured:true,member:this.config.member,repo:this.credentials.repo,lastUpload:state.lastUpload,lastPull:state.lastPull,conflicts:state.conflicts.map(item=>({id:item.id,table:item.table,key:item.key,local:item.local,remote:item.row,author:item.author})),private:true}}
  async pullRepository(){await this.git('pull','--rebase','origin','main')}
  async commit(message){await this.git('add','.');const pending=await this.git('status','--porcelain');if(pending)await this.git('commit','-m',message);await this.git('push','origin','HEAD:main')}
  fileKeys(snapshot){return [...Object.keys(snapshot.files),...Object.keys(snapshot.team_files).map(id=>'team/'+id)]}
@@ -69,12 +69,17 @@ export class LocalSync{
   for(const key of keys){const name=createHash('sha256').update(key).digest('hex')+'.enc';const file=path.join(this.repo,'files',name);if(!await exists(file)){const bytes=await this.local('GET',undefined,key);await writeFile(file,seal({key,bytes:bytes.toString('base64')},this.credentials.syncKey),{mode:0o600})}}
  }
  async restoreFiles(snapshot){
-  for(const key of this.fileKeys(snapshot)){const name=createHash('sha256').update(key).digest('hex')+'.enc';const file=path.join(this.repo,'files',name);const payload=open(await readFile(file),this.credentials.syncKey);await this.local('POST',Buffer.from(payload.bytes,'base64'),key)}
+  for(const key of this.fileKeys(snapshot)){
+   const response=await fetch(this.config.origin+'/api/local-sync/data?file='+encodeURIComponent(key),{method:'HEAD',headers:{Authorization:'Bearer '+this.config.token}});
+   if(response.status===200)continue;
+   if(response.status!==404)throw Error('无法检查本机附件：'+response.status);
+   const name=createHash('sha256').update(key).digest('hex')+'.enc';const file=path.join(this.repo,'files',name);const payload=open(await readFile(file),this.credentials.syncKey);await this.local('POST',Buffer.from(payload.bytes,'base64'),key);
+  }
  }
  async seed(){
   const snapshot=await this.snapshot();await this.storeFiles(snapshot);
   await writeFile(path.join(this.repo,'seed.enc'),seal(snapshot,this.credentials.syncKey),{mode:0o600});
-  await writeFile(path.join(this.repo,'README.md'),'# Career Workbench private data\n\nEncrypted local-workbench snapshots and append-only changes. Access is restricted to Cornelius-Chen and Anson-F. No keys or credentials are stored here.\n');
+  await writeFile(path.join(this.repo,'README.md'),'# Career Workbench private data\n\nEncrypted local-workbench snapshots and append-only changes. Access is restricted to invited workspace members. No keys or credentials are stored here.\n');
   await writeFile(path.join(this.repo,'.gitattributes'),'*.enc binary\n');
   await this.commit('Initialize encrypted shared career records');
   await saveJSON(this.baseFile,snapshot);const state=await this.state();state.seeded=true;await saveJSON(this.stateFile,state);
@@ -92,7 +97,7 @@ export class LocalSync{
   await this.commit(label);return id;
  }
  async upload(){
-  await this.pullRepository();const current=await this.snapshot();const base=await readJSON(this.baseFile);const changes=differences(base,current,this.config.member);
+  await this.pullRepository();const current=await this.snapshot();const base=await readJSON(this.baseFile);const changes=differences(base,current,this.config.member,this.credentials.ownerLogin);
   await this.storeFiles(current);
   const state=await this.state();
   if(changes.length){const id=await this.publish(changes,'Sync '+this.config.member+' career updates');state.applied.push(id)}

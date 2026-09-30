@@ -6,6 +6,11 @@ export const dynamic='force-dynamic';
 const keys=schema as Record<string,string>;
 const canonical=(row:any)=>JSON.stringify(row===null?null:Object.fromEntries(Object.entries(row).sort(([a],[b])=>a.localeCompare(b))));
 function authorized(req:Request){return env.CAREER_LOCAL_MEMBER&&req.headers.get('authorization')===`Bearer ${env.CAREER_LOCAL_SYNC_TOKEN}`}
+export async function HEAD(req:Request){
+ if(!authorized(req))return new Response(null,{status:403});
+ const file=new URL(req.url).searchParams.get('file')!;
+ return new Response(null,{status:await getFile(file)?200:404});
+}
 export async function GET(req:Request){
  if(!authorized(req))return new Response('FORBIDDEN',{status:403});
  const file=new URL(req.url).searchParams.get('file');
