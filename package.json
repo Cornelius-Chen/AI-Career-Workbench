@@ -6,6 +6,12 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "local:setup": "node scripts/local.mjs setup",
+    "local:start": "node scripts/local.mjs start",
+    "local:sync": "node scripts/local.mjs sync",
+    "local:status": "node scripts/local.mjs status",
+    "local:agent": "node scripts/local-agent.mjs",
+    "test:sync": "node --test tests/local-sync.test.mjs",
     "install:ci": "node scripts/install-ci.mjs",
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",

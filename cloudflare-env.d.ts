@@ -11,6 +11,10 @@ declare namespace Cloudflare {
     GITHUB_BROTHER_ID?: string;
     CAREER_OWNER_EMAIL: string;
     CAREER_BROTHER_EMAIL: string;
+    CAREER_LOCAL_MEMBER?: string;
+    CAREER_LOCAL_SYNC_TOKEN?: string;
+    CAREER_LOCAL_SYNC_URL?: string;
+    CAREER_ARCHIVED?: string;
   }
 }
 

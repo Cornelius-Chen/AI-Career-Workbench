@@ -5,6 +5,7 @@
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
+    "CAREER_ARCHIVED": "1",
     "GITHUB_CLIENT_ID": "Ov23lij7C14YNVoim9tv",
     "GITHUB_OWNER_ID": "194889682",
     "GITHUB_BROTHER_ID": "224968893"

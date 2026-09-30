@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {env} from 'cloudflare:workers';
 import {db} from '@/lib/store';
 import {OWNER_EMAIL,BROTHER_EMAIL,teamError,teamUser} from '@/lib/team';
 
@@ -10,6 +11,7 @@ const now=()=>new Date().toISOString();
 
 export async function GET(req:Request){
  try{
+  if(env.CAREER_ARCHIVED)return reply({archived:true});
   const me=await teamUser();
   const url=new URL(req.url);
   const view=url.searchParams.get('view');
@@ -78,7 +80,7 @@ export async function GET(req:Request){
   const requests=messages.results.filter(message=>message.author_kind==='person');
   const candidates=jobs.results;
   if(view==='agent')return reply({members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:users.map(member=>({email:member.email,applications:member.email===OWNER_EMAIL?ownerApplicationCount:applications.filter(a=>a.memberEmail===member.email).length,submitted:member.email===OWNER_EMAIL?Object.entries(ownerCounts).reduce((sum,[status,n])=>sum+(progressed.has(status)?Number(n):0),0):applications.filter(a=>a.memberEmail===member.email&&progressed.has(a.status)).length,uncertain:member.email===OWNER_EMAIL?Number(ownerCounts.uncertain||0):applications.filter(a=>a.memberEmail===member.email&&a.status==='uncertain').length,queued:member.email===OWNER_EMAIL?Number(ownerCounts.queued||0):applications.filter(a=>a.memberEmail===member.email&&a.status==='queued').length})),confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:applications.find(application=>application.memberEmail===OWNER_EMAIL&&application.url===url)?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
-  return reply({me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,ownerApplicationCount,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results});
+  return reply({me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared,local:!!env.CAREER_LOCAL_MEMBER},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,ownerApplicationCount,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results});
  }catch(e){return teamError(e)}
 }
 

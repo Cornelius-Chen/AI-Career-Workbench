@@ -1,0 +1,15 @@
+{
+  "jobs":"id",
+  "applications":"id",
+  "events":"id",
+  "files":"id",
+  "team_members":"email",
+  "team_profiles":"member_email",
+  "team_recommendations":"id",
+  "team_recommendation_decisions":"id",
+  "team_applications":"id",
+  "team_application_events":"id",
+  "team_files":"id",
+  "team_messages":"id",
+  "team_agent_tasks":"id"
+}

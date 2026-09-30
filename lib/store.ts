@@ -5,10 +5,11 @@ import seedJobs from '@/data/jobs.json';
 import reviewedResume from '@/data/manually-reviewed-resume.json';
 import {canonical,defaultProfile,defaultRules,rank,type Fact} from './domain';
 import {OWNER_EMAIL,isOwnerEmail} from './identities';
-export function db(){if(!env.DB)throw Error('数据服务暂时不可用，请稍后重试');return env.DB}
+export function db(){if(env.CAREER_ARCHIVED)throw Error('工作台已迁至本地，请使用 http://127.0.0.1:4317/team');if(!env.DB)throw Error('数据服务暂时不可用，请稍后重试');return env.DB}
 export function getFile(id:string){return env.CAREER_FILES!.get(id,'arrayBuffer')}
 export function putFile(id:string,bytes:Uint8Array){return env.CAREER_FILES!.put(id,bytes)}
 export async function owner(allowWorker=false){
+ if(env.CAREER_ARCHIVED)throw Error('工作台已迁至本地，请使用 http://127.0.0.1:4317/team');
  if(allowWorker&&env.CAREER_WORKER_TOKEN_SHA256){const h=await headers();const token=h.get('x-career-worker-token');if(token){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));const actual=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');if(actual.length===env.CAREER_WORKER_TOKEN_SHA256.length){let mismatch=0;for(let i=0;i<actual.length;i++)mismatch|=actual.charCodeAt(i)^env.CAREER_WORKER_TOKEN_SHA256.charCodeAt(i);if(!mismatch)return{kind:'worker',userId:'owner-authorized-worker',email:OWNER_EMAIL}}}}
  const u=await getChatGPTUser();if(!u)throw Error('UNAUTHORIZED');const dev=import.meta.env.DEV&&u.userId==='local_seedy';if(!dev&&!isOwnerEmail(u.email))throw Error('FORBIDDEN');return {...u,kind:'human'};
 }
