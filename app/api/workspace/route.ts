@@ -226,16 +226,16 @@ export async function GET(req: Request) {
     const u = new URL(req.url);
     const batch = u.searchParams.get("batch");
     if (batch) {
-      const offset = Number(u.searchParams.get("offset") || 0);
+      const cursor = u.searchParams.get("cursor") || "";
       const query = batch === "jobs"
-        ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',j.id,'canonical',j.canonical,'updated',j.updated),json_remove(j.data,'$.description'))),'[]') AS payload FROM (SELECT * FROM jobs ORDER BY updated DESC LIMIT 200 OFFSET ?) j`
+        ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',j.id,'canonical',j.canonical,'updated',j.updated),json_remove(j.data,'$.description'))),'[]') AS payload FROM (SELECT * FROM jobs WHERE id>? ORDER BY id LIMIT 200) j`
         : batch === "applications"
-          ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',a.id,'job_id',a.job_id,'company_group',a.company_group,'status',a.status,'resume_id',a.resume_id,'lease',a.lease,'lease_until',a.lease_until,'updated',a.updated),a.data)),'[]') AS payload FROM (SELECT * FROM applications WHERE status!='season_excluded' ORDER BY updated DESC LIMIT 200 OFFSET ?) a`
+          ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',a.id,'job_id',a.job_id,'company_group',a.company_group,'status',a.status,'resume_id',a.resume_id,'lease',a.lease,'lease_until',a.lease_until,'updated',a.updated),a.data)),'[]') AS payload FROM (SELECT * FROM applications WHERE id>? AND status!='season_excluded' ORDER BY id LIMIT 200) a`
           : batch === "events"
-            ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',e.id,'application_id',e.application_id,'source_key',e.source_key,'occurred',e.occurred),e.data)),'[]') AS payload FROM (SELECT * FROM events ORDER BY occurred DESC LIMIT 200 OFFSET ?) e`
+            ? `SELECT COALESCE(json_group_array(json_patch(json_object('id',e.id,'application_id',e.application_id,'source_key',e.source_key,'occurred',e.occurred),e.data)),'[]') AS payload FROM (SELECT * FROM events WHERE id>? ORDER BY id LIMIT 200) e`
             : null;
       if (!query) throw Error("未知数据类型");
-      const row = await db().prepare(query).bind(offset).first<{ payload: string }>();
+      const row = await db().prepare(query).bind(cursor).first<{ payload: string }>();
       return new Response(row!.payload, { headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" } });
     }
     await init();

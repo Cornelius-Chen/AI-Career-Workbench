@@ -14,7 +14,7 @@ export async function GET(req:Request){
   const url=new URL(req.url);
   const view=url.searchParams.get('view');
   if(view==='owner-applications'){
-   const offset=Number(url.searchParams.get('offset')||0);
+   const cursor=url.searchParams.get('cursor')||'';
    const row=await db().prepare(`SELECT COALESCE(json_group_array(json_object(
     'id','legacy:'||a.id,'memberEmail',?,'company',a.company,'title',a.title,'url',a.url,
     'location',COALESCE(a.location,''),'lane',COALESCE(a.lane,''),
@@ -29,18 +29,18 @@ export async function GET(req:Request){
     json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,
     json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane
     FROM applications x JOIN jobs j ON j.id=x.job_id
-    WHERE x.status!='season_excluded' ORDER BY x.updated DESC LIMIT 200 OFFSET ?
-   ) a`).bind(OWNER_EMAIL,offset).first<{payload:string}>();
+    WHERE x.id>? AND x.status!='season_excluded' ORDER BY x.id LIMIT 200
+   ) a`).bind(OWNER_EMAIL,cursor).first<{payload:string}>();
    return new Response(row!.payload,{headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
   }
   if(view==='owner-events'){
-   const offset=Number(url.searchParams.get('offset')||0);
+   const cursor=url.searchParams.get('cursor')||'';
    const row=await db().prepare(`SELECT COALESCE(json_group_array(json_patch(json_object(
-    'applicationId',e.application_id,'id',e.occurred,'created',e.occurred
+    'applicationId',e.application_id,'id',e.occurred,'created',e.occurred,'cursorId',e.id
    ),e.data)),'[]') AS payload FROM (
-    SELECT application_id,occurred,data FROM events WHERE application_id IS NOT NULL
-    ORDER BY occurred DESC LIMIT 200 OFFSET ?
-   ) e`).bind(offset).first<{payload:string}>();
+    SELECT id,application_id,occurred,data FROM events WHERE id>? AND application_id IS NOT NULL
+    ORDER BY id LIMIT 200
+   ) e`).bind(cursor).first<{payload:string}>();
    return new Response(row!.payload,{headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
   }
   const [members,recommendations,teamApps,teamEvents,ownerApps,jobs,teamFiles,ownerFiles,messages,agentTasks,profiles,legacyProfile,decisions,ownerStatusCounts]=await Promise.all([
