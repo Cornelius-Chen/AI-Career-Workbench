@@ -23,7 +23,7 @@ export async function GET(req:Request){
     'reference',COALESCE(json_extract(a.data,'$.reference'),''),'deadline',json_extract(a.data,'$.deadline'),
     'lastEvidence',COALESCE(json_extract(a.data,'$.lastEvidence'),''),
     'lastSource',COALESCE(json_extract(a.data,'$.lastSource'),''),'legacy',json('true'),
-    'events',json(COALESCE((SELECT json_group_array(json_patch(json_object('id',e.occurred,'created',e.occurred),e.data)) FROM events e WHERE e.application_id=a.id),'[]'))
+    'events',json('[]')
    )),'[]') AS payload FROM (
     SELECT x.id,x.status,x.updated,x.data,json_extract(j.data,'$.company') AS company,
     json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,
@@ -31,6 +31,16 @@ export async function GET(req:Request){
     FROM applications x JOIN jobs j ON j.id=x.job_id
     WHERE x.status!='season_excluded' ORDER BY x.updated DESC LIMIT 200 OFFSET ?
    ) a`).bind(OWNER_EMAIL,offset).first<{payload:string}>();
+   return new Response(row!.payload,{headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
+  }
+  if(view==='owner-events'){
+   const offset=Number(url.searchParams.get('offset')||0);
+   const row=await db().prepare(`SELECT COALESCE(json_group_array(json_patch(json_object(
+    'applicationId',e.application_id,'id',e.occurred,'created',e.occurred
+   ),e.data)),'[]') AS payload FROM (
+    SELECT application_id,occurred,data FROM events WHERE application_id IS NOT NULL
+    ORDER BY occurred DESC LIMIT 200 OFFSET ?
+   ) e`).bind(offset).first<{payload:string}>();
    return new Response(row!.payload,{headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
   }
   const [members,recommendations,teamApps,teamEvents,ownerApps,jobs,teamFiles,ownerFiles,messages,agentTasks,profiles,legacyProfile,decisions,ownerStatusCounts]=await Promise.all([
