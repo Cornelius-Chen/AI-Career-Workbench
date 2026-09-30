@@ -1158,7 +1158,7 @@ export async function POST(req: Request) {
           sourceUrl: z.string().url(),
           evidence: z.string().min(12).max(8000),
           occurred: z.string().datetime(),
-          deadline: z.string().datetime().optional(),
+          deadline: z.string().datetime().nullable().optional(),
           reference: z.string().max(200).optional(),
           company: z.string().max(200).optional(),
           title: z.string().max(300).optional(),
@@ -1242,7 +1242,7 @@ export async function POST(req: Request) {
             Date.parse(input.occurred) >= Date.parse(a.stageAt || "1970-01-01")
               ? input.occurred
               : a.stageAt,
-          ...(input.deadline ? { deadline: input.deadline } : {}),
+          ...(input.deadline !== undefined ? { deadline: input.deadline } : {}),
           lastEvidence: input.evidence,
           lastSource: input.sourceUrl,
           ...(input.reference ? { reference: input.reference } : {}),
