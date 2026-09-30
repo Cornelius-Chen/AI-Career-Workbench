@@ -11,32 +11,50 @@ const now=()=>new Date().toISOString();
 export async function GET(req:Request){
  try{
   const me=await teamUser();
-  const [members,recommendations,teamApps,teamEvents,ownerApps,ownerEvents,jobs,teamFiles,ownerFiles,messages,agentTasks,profiles,legacyProfile,decisions]=await Promise.all([
+  const url=new URL(req.url);
+  const view=url.searchParams.get('view');
+  if(view==='owner-applications'){
+   const offset=Number(url.searchParams.get('offset')||0);
+   const row=await db().prepare(`SELECT COALESCE(json_group_array(json_object(
+    'id','legacy:'||a.id,'memberEmail',?,'company',a.company,'title',a.title,'url',a.url,
+    'location',COALESCE(a.location,''),'lane',COALESCE(a.lane,''),
+    'opportunityType',CASE WHEN lower(a.title) LIKE '%intern%' OR a.title LIKE '%实习%' THEN 'internship' ELSE 'full_time' END,
+    'period','','status',a.status,'updated',a.updated,'notes',COALESCE(json_extract(a.data,'$.notes'),''),
+    'reference',COALESCE(json_extract(a.data,'$.reference'),''),'deadline',json_extract(a.data,'$.deadline'),
+    'lastEvidence',COALESCE(json_extract(a.data,'$.lastEvidence'),''),
+    'lastSource',COALESCE(json_extract(a.data,'$.lastSource'),''),'legacy',json('true'),
+    'events',json(COALESCE((SELECT json_group_array(json_patch(json_object('id',e.occurred,'created',e.occurred),e.data)) FROM events e WHERE e.application_id=a.id),'[]'))
+   )),'[]') AS payload FROM (
+    SELECT x.id,x.status,x.updated,x.data,json_extract(j.data,'$.company') AS company,
+    json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,
+    json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane
+    FROM applications x JOIN jobs j ON j.id=x.job_id
+    WHERE x.status!='season_excluded' ORDER BY x.updated DESC LIMIT 200 OFFSET ?
+   ) a`).bind(OWNER_EMAIL,offset).first<{payload:string}>();
+   return new Response(row!.payload,{headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
+  }
+  const [members,recommendations,teamApps,teamEvents,ownerApps,jobs,teamFiles,ownerFiles,messages,agentTasks,profiles,legacyProfile,decisions,ownerStatusCounts]=await Promise.all([
    db().prepare('SELECT email,name,role,resume_shared FROM team_members ORDER BY role DESC,created').all<any>(),
    db().prepare('SELECT * FROM team_recommendations ORDER BY created DESC').all<any>(),
    db().prepare('SELECT a.*,r.company,r.title,r.url,r.location,r.lane,r.opportunity_type,r.period FROM team_applications a JOIN team_recommendations r ON r.id=a.recommendation_id ORDER BY a.updated DESC').all<any>(),
    db().prepare('SELECT * FROM team_application_events ORDER BY created DESC').all<any>(),
-   db().prepare("SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status!='season_excluded' ORDER BY a.updated DESC").all<any>(),
-   db().prepare('SELECT application_id,occurred,data FROM events WHERE application_id IS NOT NULL ORDER BY occurred DESC').all<any>(),
-   db().prepare("SELECT id,data FROM jobs WHERE COALESCE(json_extract(data,'$.hidden'),0)=0 ORDER BY CAST(json_extract(data,'$.score') AS REAL) DESC LIMIT 120").all<any>(),
+   view==='agent'?db().prepare(`SELECT a.id,a.status,a.updated,a.data,json_extract(j.data,'$.company') AS company,json_extract(j.data,'$.title') AS title,json_extract(j.data,'$.url') AS url,json_extract(j.data,'$.location') AS location,json_extract(j.data,'$.lane') AS lane FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.status IN ('submitted','assessment','interview','offer','rejected','withdrawn') ORDER BY a.updated DESC`).all<any>():Promise.resolve({results:[]}),
+   view==='agent'?db().prepare("SELECT id,json_extract(data,'$.company') AS company,json_extract(data,'$.title') AS title,json_extract(data,'$.url') AS url,json_extract(data,'$.location') AS location,json_extract(data,'$.lane') AS lane,json_extract(data,'$.score') AS score,json_extract(data,'$.eligibility') AS eligibility FROM jobs WHERE COALESCE(json_extract(data,'$.hidden'),0)=0 ORDER BY CAST(json_extract(data,'$.score') AS REAL) DESC LIMIT 120").all<any>():Promise.resolve({results:[]}),
    db().prepare('SELECT * FROM team_files ORDER BY created DESC').all<any>(),
    db().prepare('SELECT id,name,type,created,data FROM files ORDER BY created DESC').all<any>(),
    db().prepare('SELECT * FROM team_messages ORDER BY created DESC LIMIT 100').all<any>(),
    db().prepare('SELECT * FROM team_agent_tasks ORDER BY updated DESC LIMIT 100').all<any>(),
    db().prepare('SELECT * FROM team_profiles').all<any>(),
    db().prepare("SELECT value FROM settings WHERE id='profile'").first<any>(),
-   db().prepare('SELECT recommendation_id,member_email,decision FROM team_recommendation_decisions').all<any>()
+   db().prepare('SELECT recommendation_id,member_email,decision FROM team_recommendation_decisions').all<any>(),
+   db().prepare("SELECT status,COUNT(*) AS n FROM applications WHERE status!='season_excluded' GROUP BY status").all<{status:string,n:number}>()
   ]);
   const users=members.results.map(m=>({...m,resumeShared:!!m.resume_shared}));
   const shared=(email:string)=>email===me.email||users.some(u=>u.email===email&&u.resumeShared);
-  const eventsByApplication=new Map<string,any[]>();
-  for(const event of ownerEvents.results){
-   const entries=eventsByApplication.get(event.application_id)||[];
-   entries.push({id:event.occurred,created:event.occurred,...JSON.parse(event.data)});
-   eventsByApplication.set(event.application_id,entries);
-  }
+  const ownerCounts=Object.fromEntries(ownerStatusCounts.results.map(row=>[row.status,row.n]));
+  const ownerApplicationCount=ownerStatusCounts.results.reduce((sum,row)=>sum+row.n,0);
   const applications=[
-   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/\bintern(?:ship)?\b|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:eventsByApplication.get(a.id)||[]}}),
+   ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/\bintern(?:ship)?\b|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:[]}}),
    ...teamApps.results.map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated));
   const files=[
@@ -48,9 +66,9 @@ export async function GET(req:Request){
   const sharedRecommendations=recommendations.results.map(r=>({...r,coapply:!!r.coapply,myDecision:decisions.results.find(d=>d.recommendation_id===r.id&&d.member_email===me.email)?.decision||''}));
   const agentNotes=messages.results.filter(message=>message.author_kind==='agent').map(message=>({...message,...JSON.parse(message.content)}));
   const requests=messages.results.filter(message=>message.author_kind==='person');
-  const candidates=jobs.results.map(r=>({id:r.id,...JSON.parse(r.data)}));
-  if(new URL(req.url).searchParams.get('view')==='agent')return reply({members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:users.map(member=>({email:member.email,applications:applications.filter(a=>a.memberEmail===member.email).length,submitted:applications.filter(a=>a.memberEmail===member.email&&progressed.has(a.status)).length,uncertain:applications.filter(a=>a.memberEmail===member.email&&a.status==='uncertain').length,queued:applications.filter(a=>a.memberEmail===member.email&&a.status==='queued').length})),confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:applications.find(application=>application.memberEmail===OWNER_EMAIL&&application.url===url)?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
-  return reply({me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,jobs:candidates,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results});
+  const candidates=jobs.results;
+  if(view==='agent')return reply({members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:users.map(member=>({email:member.email,applications:member.email===OWNER_EMAIL?ownerApplicationCount:applications.filter(a=>a.memberEmail===member.email).length,submitted:member.email===OWNER_EMAIL?Object.entries(ownerCounts).reduce((sum,[status,n])=>sum+(progressed.has(status)?Number(n):0),0):applications.filter(a=>a.memberEmail===member.email&&progressed.has(a.status)).length,uncertain:member.email===OWNER_EMAIL?Number(ownerCounts.uncertain||0):applications.filter(a=>a.memberEmail===member.email&&a.status==='uncertain').length,queued:member.email===OWNER_EMAIL?Number(ownerCounts.queued||0):applications.filter(a=>a.memberEmail===member.email&&a.status==='queued').length})),confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:applications.find(application=>application.memberEmail===OWNER_EMAIL&&application.url===url)?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
+  return reply({me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,ownerApplicationCount,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results});
  }catch(e){return teamError(e)}
 }
 

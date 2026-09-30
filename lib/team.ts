@@ -8,12 +8,6 @@ export async function teamUser(){
  if(!user)throw Error('UNAUTHORIZED');
  const email=canonicalTeamEmail(user.email);
  if(email!==OWNER_EMAIL&&email!==BROTHER_EMAIL)throw Error('FORBIDDEN');
- const created=new Date().toISOString();
- await db().batch([
-  db().prepare('INSERT OR IGNORE INTO team_members(email,name,role,created) VALUES(?,?,?,?)').bind(OWNER_EMAIL,'成员 1','owner',created),
-  db().prepare('INSERT OR IGNORE INTO team_members(email,name,role,created) VALUES(?,?,?,?)').bind(BROTHER_EMAIL,'弟弟','member',created),
-  db().prepare("INSERT OR IGNORE INTO team_profiles(member_email,target_type,start_date,updated) VALUES(?,'full_time','',?),(?,'summer_intern','2027 夏季',?)").bind(OWNER_EMAIL,created,BROTHER_EMAIL,created)
- ]);
  const member=await db().prepare('SELECT * FROM team_members WHERE email=?').bind(email).first<any>();
  if(!member)throw Error('FORBIDDEN');
  if(member.user_id!==user.userId||member.name!==user.displayName)await db().prepare('UPDATE team_members SET user_id=?,name=? WHERE email=?').bind(user.userId,user.displayName,email).run();
