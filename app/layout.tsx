@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI 求职工作台",
-  description: "私人岗位、简历与申请进度工作台。",
+  title: "AI Career Workbench",
+  description: "Your local workspace for jobs, résumés and application progress.",
 
   icons: {
     icon: "/favicon.svg",
@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <body className="antialiased">{children}</body>
     </html>
   );

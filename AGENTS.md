@@ -13,3 +13,5 @@
 成员按源码仓库实际协作者权限改代码。提交前确认 GitHub 账号和仓库目标，署名使用本人的已验证 GitHub 邮箱；修改后完成构建和适当核验。另一边拉取代码并重新构建后才会看到程序变化。
 
 新安装默认单人、空白数据，不要求 GitHub 或协作密钥。使用引导见 `docs/GETTING-STARTED.md`。成员名单从配置和数据库读取，不写死账号数量、邮箱、求职类型或年份。网页保存要求不会自动运行 Agent，必须实际读取并执行后报告。
+
+界面与 README 默认英文，中文通过界面语言菜单与 `README.zh-CN.md` 保留。新增界面文案使用 `lib/i18n.tsx` 并补齐 `lib/locales/en.json`，英文安装和 Agent 指南见 `docs/GETTING-STARTED.en.md`、`docs/LOCAL-WORKBENCH.en.md`。语言切换只改变显示和内置指引，不能翻译覆写用户原文、状态代码或筛选值。修改界面文案后运行 `npm run test:i18n`；中英 README 功能说明保持对应，英文与中文运行图分别引用各自图片。

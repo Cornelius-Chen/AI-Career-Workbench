@@ -21,7 +21,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "local:share": "node scripts/local.mjs share",
-    "local:invite": "node scripts/local.mjs invite"
+    "local:invite": "node scripts/local.mjs invite",
+    "test:i18n": "node --experimental-strip-types --test tests/i18n.test.mjs"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",

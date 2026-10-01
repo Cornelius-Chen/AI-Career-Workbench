@@ -1,155 +1,151 @@
-# AI Career Workbench · AI 求职工作台
+# AI Career Workbench
 
-**让 Agent 的岗位研究，接上你的下一步行动。**
+**Turn your Agent's job research into a clear next step.**
 
-把求职目标、简历、岗位推荐、申请进度和研究依据整理在同一个本地工作台。默认单人使用，需要时开启两人或多人协作。
+A local-first workspace for career goals, résumés, job recommendations, application progress and research evidence. Start solo. Add partner or group collaboration when you need it.
 
-[中文](README.md) · [English](README.en.md)
+**English** · [简体中文](README.zh-CN.md)
 
-![Node.js 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-43853d) ![Local first](https://img.shields.io/badge/数据-本地保存-2563eb) [![MIT License](https://img.shields.io/badge/License-MIT-6366f1)](LICENSE)
+![Node.js 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-43853d) ![Local first](https://img.shields.io/badge/Data-local--first-2563eb) [![MIT License](https://img.shields.io/badge/License-MIT-6366f1)](LICENSE)
 
-[开始安装](#开始安装) · [交给 Agent 接手](docs/AGENT-START.md) · [资料放哪里](#首次使用资料放哪里) · [伙伴协作](#可选和伙伴一起用) · [反馈 Bug](#反馈-bug-与联系作者)
+[Install](#install-on-mac) · [Give this to your Agent](docs/AGENT-START.en.md) · [Where your information goes](#first-session-where-your-information-goes) · [Collaboration](#optional-partner-collaboration) · [Report a bug](#feedback-and-contact)
 
-## 适合怎样使用？
+## Who is it for?
 
-| 你的需求 | 工作台怎样帮忙 |
+| Your need | How the workbench helps |
 | --- | --- |
-| 自己求职，资料和聊天越来越多 | 把目标、推荐依据、申请进度和下一步放在一起，方便 Agent 接着研究 |
-| 申请多了，想快速找到该处理的岗位 | 按进度、岗位类型和地区筛选，查看对应材料与凭证 |
-| 和朋友一起找工作，但目标不同 | 各自维护目标与计划，共享有效线索，分别区分全职与暑期实习 |
-| 希望个人资料留在自己的电脑 | 默认本地保存；可选协作通过独立私有仓库手动加密同步 |
+| Job-search information is scattered across files and chats | Keep goals, research evidence, progress and next steps together so your Agent can continue from prior work |
+| Your application list is growing | Filter by stage, role type and region; find the materials and evidence for each application |
+| You and a friend have different goals | Maintain separate goals and plans, share useful leads, and distinguish full-time roles from summer internships |
+| You want personal information to stay on your computer | Store it locally; optionally sync encrypted collaboration updates through a separate private repository |
 
-**先准备：** Mac、Node.js 22.13+、Git，以及你自己的 Codex / ChatGPT Agent。单人使用无需 GitHub 登录、Cloudflare 或模型 API 密钥。当前界面为中文，个人申请资料与规则主要面向美国求职。
+**You need:** a Mac, Node.js 22.13+, Git and your own Codex / ChatGPT Agent. Solo use needs no GitHub login, Cloudflare account or model API key. The interface **defaults to English**; select **中文** in the top-right language menu whenever you prefer. Your choice is remembered in that browser. Personal application rules currently focus on U.S. job searches.
 
-**首次使用：** [安装](#开始安装) → 填目标 → 上传真实简历并确认资料 → [把指令交给 Agent](docs/AGENT-START.md) → 选择推荐 → 跟进申请。
+**First session:** [Install](#install-on-mac) → set goals → upload a real résumé and confirm your profile → [give your Agent the prompt](docs/AGENT-START.en.md) → choose recommendations → follow up on applications.
 
-网页保存材料和研究要求；自己的 Agent 实际读取、研究与写入。本人决定是否加入计划，只有真实提交凭证才记为已投递。
+The app stores materials and requests. Your own Agent reads, researches and writes results. You decide which roles enter your plan; only actual submission evidence establishes a submitted application.
 
-## 运行逻辑：这些功能怎样帮你推进求职？
+## How the features work together
 
-![AI 求职工作台运行逻辑：认识自己、Agent 研究、选择机会、推进申请、记录结果，以及可选的两人或多人协作。](docs/images/career-workflow.png)
+![AI Career Workbench workflow: know yourself, Agent research, choose opportunities, prepare and apply, track results, and optional partner or group collaboration.](docs/images/career-workflow.en.png)
 
-**单人主线：** 真实资料 → Agent 核实与匹配 → 本人选择岗位 → 准备与推进申请 → 记录真实结果 → 调整下一轮研究。
+**Solo workflow:** real profile → Agent verification and matching → your job selection → preparation and application → actual outcomes → refine the next research round.
 
-| 功能 | 用它做什么 | 怎样帮助其他环节 |
+| Feature | What you do | How it supports the next step |
 | --- | --- | --- |
-| 求职目标、简历与个人资料 | 说明技能、地区、全职/暑期实习、目标年份和真实经历 | Agent 据此排除时间或条件不符的岗位，解释推荐理由 |
-| Agent 信息 | 保留真实发现、依据、来源和下一步 | 下一次研究可接着已有证据推进；协作时双方 Agent 可以读取已共享的有效信息 |
-| 岗位推荐 | 查看官方岗位与推荐依据，选择「加入我的申请」或「不考虑」 | 被接受的机会进入自己的申请计划，避免把研究结果散落在聊天里 |
-| 我的工作台 | 按岗位类型、地区和进度筛选申请，查看简历版本、测评与面试 | 集中处理当前行动，按具体岗位追踪材料与凭证 |
-| 岗位地图 | 切换推荐和已投递岗位，查看工作地点与类型 | 辅助判断地点是否符合目标；无法定位的岗位仍保留在列表 |
-| 进度与统计 | 记录确认投递、测评、面试、Offer 等实际进展 | 帮助复盘哪些方向有反馈，再让 Agent 调整建议；统计不代表个人录用概率 |
-| 可选伙伴协作 | 交换岗位线索、申请进度、任务和 Agent 发现 | 根据各自目标互相推荐；适合双方时才建议共同申请，简历共享由本人选择 |
+| Career goals, résumé and profile | Record skills, regions, full-time / internship, target year and real experience | Your Agent excludes mismatched timing or criteria and explains recommendations |
+| Agent notes | Keep actual findings, evidence, sources and next actions | Future research continues from existing evidence; partners' Agents can read shared findings |
+| Job recommendations | Review official listings and reasoning; choose **Add to my applications** or **Skip** | Accepted opportunities enter your own application plan |
+| My workbench | Filter applications by role, region and stage; review résumé versions, assessments and interviews | Focus on current actions while retaining each role's materials and evidence |
+| Job map | Switch between recommendations and confirmed submissions; inspect locations and role types | Check geographic fit; unmapped jobs remain in the list |
+| Progress and metrics | Record actual submissions, assessments, interviews and offers | Review which directions receive responses and refine your Agent's suggestions; metrics are not personal hiring probabilities |
+| Optional collaboration | Exchange leads, progress, tasks and Agent findings | Recommend jobs for each member's goals; suggest applying together only when both qualify. Each person controls résumé sharing |
 
-例如：你找全职、伙伴找暑期实习，可以共用公司的招聘线索和准备经验，分别筛选符合自己类型与年份的岗位。共享线索不意味着两个人应该投递同一个职位。
+For example, a full-time job seeker and a summer-internship seeker can share company leads and preparation experience while filtering by their own employment type and year. Sharing a lead does not mean both should apply to the same role.
 
-**网页负责整理，Agent 负责实际研究，本人负责确认与选择。** 网页保存研究要求不会自动运行 Agent；加入计划也不等于已投递。工作台不保证录用。
+**The app organizes. Your Agent researches. You confirm and decide.** Saving a request does not automatically run an Agent. A plan is not a submission. The workbench does not guarantee employment.
 
-## 开始安装
+## Install on Mac
 
-目前安装与日常启动步骤以 **Mac** 为主。需要 [Node.js 22.13 或更新版本](https://nodejs.org/en/download) 与 Git；首次安装需要网络下载程序和依赖。
+Install [Node.js 22.13+](https://nodejs.org/en/download) and Git. Initial setup needs internet access to download code and dependencies. Your Agent's local file, command and browser capabilities depend on its environment.
 
-单人模式无需 GitHub 登录、Cloudflare 账号或 API 密钥。你使用自己的 Codex / ChatGPT Agent；是否有文件、浏览器或本地命令能力取决于该 Agent 的环境。
+### Ask your Agent to install
 
-### 交给自己的 Agent 安装
+Copy [the Agent installation and handoff prompt](docs/AGENT-START.en.md) into your Agent conversation. It covers installation, profile confirmation, research and evidence checks.
 
-把 [Agent 安装与接手指令](docs/AGENT-START.md) 中的整段文字复制给自己的 Agent。它包含仓库地址、安装步骤、资料确认、岗位研究和结果核验要求。
-
-### 自己安装
-
-在终端执行：
+### Install yourself
 
 ```sh
 git clone https://github.com/Cornelius-Chen/AI-Career-Workbench.git
 cd AI-Career-Workbench
 npm ci
-npm run local:setup -- --name "我的名字"
+npm run local:setup -- --name "Your name"
 npm run local:start
 ```
 
-打开 [本机工作台](http://127.0.0.1:4317/team)，从「使用引导」开始。首次构建需要等待终端提示安装完成。新安装是空白数据库，不包含作者的个人资料、简历、投递历史或示例岗位。
+Wait for setup to finish, then open [your local workbench](http://127.0.0.1:4317/team) and start with **Getting started**. A fresh database is blank: no author's personal details, résumés, application history or sample jobs.
 
-以后在安装目录双击 `start-local.command` 启动，再打开本机地址。通过这个快捷文件启动时，关闭它的终端窗口会停止网站。**这个地址只属于当前电脑；伙伴需要在自己的电脑安装。**
+After installation, double-click `start-local.command` in the project directory. Closing that launcher's terminal window stops the app. **This address belongs to your own computer. Partners install on theirs.**
 
-详细说明：[从单人开始](docs/GETTING-STARTED.md)。
+Detailed guide: [Start solo](docs/GETTING-STARTED.en.md).
 
-## 首次使用：资料放哪里？
+## First session: where your information goes
 
-按「使用引导」的四步完成：
-
-| 步骤 | 页面位置 | 你需要提供什么 / 做什么 |
+| Information | Where to put it | What happens next |
 | --- | --- | --- |
-| 1. 填求职目标 | 使用引导 → 编辑求职目标 | 简介、技能、方向、地区、全职或暑期实习、期望年份与开始时间 |
-| 2. 上传原始材料 | 简历与文件 → 上传 PDF / DOCX | 上传自己的真实简历；上传本身不会自动解析、确认经历或提交申请 |
-| 3. 确认申请资料 | 我的工作台 → 简历与个人资料 | 确认联系方式、学历、经历与工作授权等事实；可请 Agent 整理，再由本人核实 |
-| 4. 交给 Agent 研究 | 使用引导 → 获取并复制 Agent 指令 | 粘贴给自己的 Agent，让它读取资料、核实官网并写入有依据的推荐 |
+| Target roles, region, employment type, year and skills | **Getting started → Edit career goals** | Your Agent uses your goals to match jobs |
+| Original PDF / DOCX résumé | **Résumés & files → Upload PDF / DOCX** | Ask your Agent to read and organize it; uploading does not automatically parse it |
+| Contacts, authorization answers, education and experience | **My workbench → Résumé & personal profile** | Personally confirm facts before application or résumé generation |
+| Verified findings and recommended jobs | Ask your Agent to write **Agent notes** and **Job recommendations** | Review evidence, then accept or skip |
+| Official confirmation and progress | **My applications** | Only a success page, application ID or confirmation email proves submission |
 
-研究结束后，在「岗位推荐」查看推荐理由和官方链接，选择「加入我的申请」或「不考虑」。协作模式下这一页叫「共享岗位」。
+Invited collaboration members store their own source files and goals. Full private facts, contacts, résumé generation and application rules currently belong to separate solo installations or the collaboration owner's personal database; they are not copied to invited members.
 
-完整私人事实库与申请规则当前面向美国求职。受邀协作成员的私人资料功能范围见 [协作说明](docs/LOCAL-WORKBENCH.md#受邀成员安装)。
+### Give research to your Agent
 
-## 每天怎么用
+Copy the prompt in **Getting started → Get Agent prompt**. It follows the selected interface language. **Agent notes → Save request** stores a request without waking your Agent; send the request to your Agent too.
 
-1. **启动并查看待办。** 在「我的工作台」筛选申请进度、类型和地区，查看今天要准备的材料、测评或面试。
-2. **把具体要求发给自己的 Agent。** 例如研究某个方向、核实已收藏岗位、准备一份简历或检查申请反馈。「Agent 信息 → 记录要求」仅保存要求，还需要在 Agent 对话中要求它执行。
-3. **查看研究结果。** Agent 在「Agent 信息」写发现、依据和下一步，在「岗位推荐」写有理由的建议；本人接受或跳过。
-4. **推进申请并留下凭证。** 加入计划后准备材料、到官网申请；只有官网成功页、申请编号或确认邮件能证明提交成功。没有凭证的操作保留为待确认。
-5. **据真实反馈复盘。** 把新进展交给 Agent 核对记录，再结合类型、地区、经历匹配和反馈调整下一轮优先级。
-
-可以复制给 Agent：
-
-> 请读取我的当前求职目标、已确认资料、已有申请和 Agent 信息，核实官方招聘页面，给出一批匹配我的岗位。每条说明匹配依据、仍待确认的条件和下一步，写入工作台的岗位推荐。先让我选择是否加入计划；不要把保存计划或未取得凭证的操作记成已投递。
-
-### Agent 没有工作台专用工具怎么办？
-
-能运行本地命令的 Agent 可以在安装目录先读取：
+An Agent with command access can start with:
 
 ```sh
 npm run local:agent -- context
 ```
 
-再按 [Agent 操作说明](docs/LOCAL-WORKBENCH.md#agent-操作) 写入资料、有效信息、推荐与任务。具备个人数据库权限时，可用 `npm run local:agent -- workspace` 读取私人事实与申请证据。
+Follow [the local command formats](docs/LOCAL-WORKBENCH.en.md#agent-commands) to write profiles, notes, recommendations and tasks. With authorized access to the private personal database, `npm run local:agent -- workspace` reads facts and application evidence.
 
-工作台提供 WebMCP 工具，但另一个 Agent 不一定已经具备这些工具。没有本地文件、命令或适用浏览器能力时，先让它给出可核实的研究结果，再交给能操作本机的 Agent 写入；不要声称已经同步。
+The app provides WebMCP tools, but another Agent may not have them. If it lacks local files, commands or browser access, ask for verifiable research results and have an Agent with local access write them. It must not claim synchronization it has not performed.
 
-## 可选：和伙伴一起用
+## Daily workflow
 
-**每人一台本地工作台 + 一个独立私有 GitHub 数据仓库。** 不需要在同一个局域网，也不需要恢复云端网站。成员数量不固定，每个人分别填写自己的目标。
+1. **Review priorities:** filter My workbench by stage, role and region; prepare current materials, assessments and interviews.
+2. **Give your Agent a specific request:** research a direction, verify saved jobs, prepare a résumé or check responses. Saved requests still need to be sent to your Agent.
+3. **Review results:** read Agent notes and recommendation evidence, then accept or skip.
+4. **Apply and keep proof:** prepare materials and use the official portal. A success page, application ID or confirmation email proves submission; unclear outcomes stay unconfirmed.
+5. **Learn from real responses:** ask your Agent to reconcile progress and refine priorities using role, region, experience and feedback.
 
-### 创建者需要做什么
+Example request to copy:
 
-1. 在「空间设置」选择协作模式，让 Agent 按 [协作设置说明](docs/LOCAL-WORKBENCH.md#从单人开启协作) 创建**自己的**私有数据仓库。
-2. 提供伙伴的实际 GitHub 用户名，让 Agent 邀请成员。
-3. 私下把生成的邀请目录交给伙伴，其中包括安装说明与密钥文件。不要把邀请目录、原始数据或密钥提交到公开仓库。
+> Read my current goals, confirmed profile, existing applications and Agent notes. Verify official recruitment pages and recommend matching jobs. Explain the evidence, remaining unknowns and next step for each. Write recommendations to the workbench and let me choose which enter my plan. Do not record a saved plan or an action without confirmation as submitted.
 
-### 伙伴需要做什么
+## Optional partner collaboration
 
-1. 用自己的 GitHub 账号接受私有数据仓库邀请。
-2. 把 [Agent 接手指令](docs/AGENT-START.md) 和收到的安装文件交给自己的 Agent，说明这是**受邀安装**，按 [受邀成员步骤](docs/LOCAL-WORKBENCH.md#受邀成员安装) 设置身份。
-3. 启动自己的本机工作台，确认本人身份，填写目标并上传本人简历。
+**One local workbench per person + a separate private GitHub data repository.** You do not need the same local network or a cloud website. Each member fills in their own goals.
 
-### 信息如何相辅相成？
+### Creator
 
-- **伙伴之间：** 看见已共享的进度与线索，独立选择推荐；符合双方条件时再共同申请。
-- **Agent 之间：** 通过工作台留下可读取的研究证据、结论和任务；下一边读取后继续研究。这里是共享记录，网页不会自动启动两边 Agent 互相聊天。
-- **电脑之间：** 修改先存在本机。「上传我的更新」把改动加密发送；伙伴「拉取伙伴更新」后才看见。也可使用「双向同步」。这是手动同步，不是实时聊天或自动定时提交。
-- **简历之间：** 每人有自己的总开关，默认不共享。开启后允许成员查看自己的简历；关闭停止后续共享，已经下载或留在历史里的文件不能收回。
+1. Choose collaboration in **Space settings**. Give your Agent [the setup instructions](docs/LOCAL-WORKBENCH.en.md#enable-collaboration-from-solo) to create **your own** private data repository.
+2. Provide each partner's actual GitHub username for invitation.
+3. Privately send the generated invitation directory, including installation instructions and keys. Never commit invitation files, raw data or keys to the public repository.
 
-Agent 开始共享工作前、完成后分别运行 `npm run local:sync`。同一条记录有不同修改时保留两版，明确选择后再同步。切回单人模式停止本机上传和拉取，并保留原有数据。
+### Partner
 
-**当前功能范围：** 协作成员可维护自己的目标、申请计划、文件、推荐选择和 Agent 信息。完整私人事实库、申请联系方式、简历生成与投递规则属于独立单人工作台或共享数据所有者的个人数据库，不复制给受邀成员。需要完整独立私人工作台时，在新目录单人安装。
+1. Accept the private data repository invitation using your own GitHub account.
+2. Give your Agent [the handoff prompt](docs/AGENT-START.en.md) and supplied files. Explicitly say this is an **invited installation** and follow [member setup](docs/LOCAL-WORKBENCH.en.md#invited-member-setup) for your identity.
+3. Start your local workbench, check your identity, fill in goals and upload your own résumé.
 
-**数据协作与代码协作分开。** 私有数据仓库邀请不授予本公开源码仓库的写入权限。需要伙伴的 Agent 改程序时，源码所有者另行邀请协作者，或共同维护一个 fork。修改发布到 GitHub 后，其他人拉取代码并重新构建才会看到页面变化。
+### How sharing works
 
-## 数据保存与程序更新
+- **People:** see shared progress and leads; make independent decisions. Apply together only when a role fits both members.
+- **Agents:** leave readable evidence, findings and tasks for the next Agent. The app does not automatically start Agent-to-Agent conversations.
+- **Computers:** changes stay local first. **Upload my updates** encrypts and uploads them; partners see them after **Pull partner updates**. **Sync both ways** does both. Sync is manual, not real-time chat or scheduled commits.
+- **Résumés:** each member has a global switch, off by default. Turning it off stops future sharing; already downloaded or historical files cannot be recalled.
 
-| 内容 | 保存在哪里 |
+Run `npm run local:sync` before and after authorized shared work. Conflicts retain both versions until a member chooses. Returning to solo stops uploads and pulls locally while preserving records.
+
+**Current scope:** invited members maintain goals, application plans, files, decisions and Agent notes. Full private facts, contacts, résumé generation and rules are held by independent solo installations or the owner's personal database. Install solo in a separate directory for a complete independent private workbench.
+
+**Data collaboration and code collaboration are separate.** Data invitations do not grant write access to this public source repository. Invite code collaborators separately or maintain a shared fork. Others pull code and rebuild to see program changes; data sync does not update the program.
+
+## Data storage and updates
+
+| Content | Where it lives |
 | --- | --- |
-| 程序与说明 | 本公开源码仓库 |
-| 本机数据库、私人资料、文件、密钥和安装状态 | 安装目录的 `.local/`，不提交到源码仓库 |
-| 允许共享的协作资料 | 上传前经过 AES-256-GCM 加密，再提交到独立私有 GitHub 仓库 |
+| Program and documentation | This public source repository |
+| Local database, personal information, files, keys and installation state | `.local/` in the installation directory; never commit it |
+| Information approved for collaboration | Encrypted with AES-256-GCM before upload to a separate private GitHub repository |
+| Interface language preference | This browser on this computer; not shared with partners |
 
-更新程序前停止网站，保留 `.local/`。在安装目录执行：
+Stop the app and preserve `.local/` before updating:
 
 ```sh
 git pull
@@ -158,52 +154,53 @@ npm run local:setup
 npm run local:start
 ```
 
-有本地代码改动时，先让 Agent 处理并保存这些改动，再拉取。更新会复用已有安装资料与数据库；不要删除 `.local/`，不要用历史云端数据覆盖本地新记录。
+Save local code changes before pulling. Setup reuses your identity, keys and database. Do not delete `.local/` or overwrite local records with archived cloud data. Previous cloud websites are retired.
 
-旧 `chatgpt.site` 和云端工作台已经退役。日常入口统一使用本机工作台，数据同步不会自动更新程序。
+Language switching changes interface labels, built-in guidance and date formatting. It does not translate or rewrite your résumé, job descriptions, evidence, names or Agent-authored notes. Application status codes and filter values stay the same across languages.
 
-## 常见问题
+## FAQ
 
-**页面没有岗位，是安装失败了吗？**
+**The page has no jobs. Did setup fail?**
 
-新安装是空白的。先补全资料，再让自己的 Agent 研究官网并实际写入推荐。
+Fresh installations are blank. Fill in your profile and have your Agent research official listings and write recommendations.
 
-**我上传简历、保存研究要求后，为什么还没结果？**
+**Why no results after uploading a résumé or saving a request?**
 
-这两步只保存材料与要求。复制引导指令给自己的 Agent，让它执行读取、核实和写入。
+These actions store material and requests. Send your Agent the guidance prompt to actually read, verify and write results.
 
-**地图上的点为什么比岗位记录少？**
+**Why are there fewer map points than records?**
 
-地图展示能定位的记录，并受当前推荐/投递和类型筛选影响。底图目前覆盖美国，远程、海外或位置未核实的岗位要继续看列表。
+The map includes located records under the current recommendation / submission and type filters. It covers the U.S.; remote, overseas and unclear locations remain in the list.
 
-**伙伴可以直接打开我发的本机链接吗？**
+**Can a partner open my localhost link?**
 
-不能；`127.0.0.1` 指向打开链接的人自己的电脑。双方各自安装，通过私有仓库上传和拉取资料。
+`127.0.0.1` points to the reader's own computer. Install separately and upload / pull through the private repository.
 
-**必须购买 Cloudflare、存储服务或 API 才能使用吗？**
+**Do I need to buy Cloudflare, storage or API access?**
 
-本地单人模式不要求这些服务。程序在本机运行；Agent 的账号和工具能力由本人准备。
+Local solo mode requires none of these. Bring your own Agent account and required tools.
 
-## 反馈 Bug 与联系作者
+**How do I return to Chinese?**
 
-- [在 GitHub 提交 Issue](https://github.com/Cornelius-Chen/AI-Career-Workbench/issues/new)
-- 联系邮箱：[Cornelius.Chen.RR@gmail.com](mailto:Cornelius.Chen.RR@gmail.com)
+Choose **中文** in the top-right language menu. The browser remembers it after refresh. Partners choose their own language independently.
 
-请写清：系统与 Node.js 版本、所在页面、操作步骤、预期结果、实际结果，以及报错文字或截图。截图先遮住联系方式、简历内容和其他私人资料；不要公开数据库、密钥或邀请文件。
+## Feedback and contact
 
-## 开发与许可
+- [Report a bug or suggest a feature](https://github.com/Cornelius-Chen/AI-Career-Workbench/issues/new/choose)
+- Email: [Cornelius.Chen.RR@gmail.com](mailto:Cornelius.Chen.RR@gmail.com)
 
-构建配置位于 `config/hosting.json`；源码不再需要 `.openai/` 目录。`npm start` 与 `npm run local:start` 使用同一个本地启动入口，复用 `.local/` 中的安装状态与数据库。预览构建生成的 `dist/.openai/` 仅是工具所需的输出格式，不提交到 GitHub。
+Include your OS and Node.js version, page, steps, expected result, actual result and redacted errors. Hide contacts, résumé contents and other private information in screenshots. Never publish databases, keys or invitation files.
 
-开发者检查：
+## Development and license
+
+Build configuration is in `config/hosting.json`; source no longer needs `.openai/`. `npm start` and `npm run local:start` use the same local launcher and existing `.local/` state. Generated `dist/.openai/` is a tool output format, not committed source.
 
 ```sh
 npm exec tsc -- --noEmit
 npm run test:sync
 npm run test:team
+npm run test:i18n
 npm run build:standalone
 ```
 
-本项目采用 [MIT 许可证](LICENSE)。第三方组件与依赖保留各自的许可证。
-
-欢迎提交有复现步骤的 Bug、使用建议或 Pull Request；参与方式见 [贡献说明](CONTRIBUTING.md)。如果工作台对你有帮助，欢迎点个 Star，让更多求职者发现它。
+[MIT](LICENSE). Third-party components and dependencies retain their own licenses. See [Contributing](CONTRIBUTING.md). If this helps your job search, a Star helps other job seekers find it.

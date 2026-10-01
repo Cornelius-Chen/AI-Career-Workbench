@@ -1,5 +1,7 @@
 # 本地模式、协作与 Agent 操作
 
+[English](LOCAL-WORKBENCH.en.md) · 简体中文
+
 首次单人安装见 [使用引导](GETTING-STARTED.md)。公开源码和独立私有数据仓库分开；个人资料、数据库、密钥、附件和邀请包都留在忽略的 `.local/` 中。不要提交原始资料到公开 GitHub。
 
 ## 从单人开启协作
