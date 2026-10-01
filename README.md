@@ -9,36 +9,29 @@
 ## 运行逻辑：这些功能怎样帮你推进求职？
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#101116", "primaryColor": "#191b24", "primaryTextColor": "#e6e8ef", "primaryBorderColor": "#53596e", "lineColor": "#858bb3", "secondaryColor": "#23263b", "tertiaryColor": "#191b24", "clusterBkg": "#14161e", "clusterBorder": "#53596e", "edgeLabelBackground": "#191b24"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#191b24", "primaryTextColor": "#e6e8ef", "primaryBorderColor": "#53596e", "lineColor": "#858bb3", "edgeLabelBackground": "#191b24"}}}%%
 flowchart TB
-    subgraph personal["个人求职 · 默认单人使用"]
-        profile["真实资料与目标<br/>简历 · 技能 · 地区 · 求职类型与年份"]
-        agent["把具体要求交给自己的 Agent<br/>读取资料与历史 · 核实官方岗位"]
-        jobs["有依据的岗位推荐<br/>本人选择：加入申请 / 不考虑"]
-        applications["我的工作台<br/>筛选与排序 · 准备材料 · 推进申请"]
-        results["真实进展与复盘<br/>凭证确认投递 → 测评 → 面试 → Offer"]
-        map["岗位地图<br/>辅助判断推荐 / 已投递岗位的地点"]
+    profile["01 · 真实资料与目标<br/>简历 · 技能 · 地区 · 求职类型与年份"]
+    agent["02 · 交给自己的 Agent 研究<br/>读取资料与历史 · 核实官网 · 留下依据与下一步"]
+    jobs["03 · 本人选择推荐<br/>加入申请 / 不考虑"]
+    applications["04 · 我的工作台<br/>按类型、地区和进度筛选 · 准备材料 · 推进申请"]
+    results["05 · 凭证确认进展<br/>投递 → 测评 → 面试 → Offer"]
+    map["岗位地图<br/>辅助判断工作地点"]
+    profile --> agent --> jobs --> applications --> results
+    results -->|据真实反馈调整研究| agent
+    jobs -.-> map
+    map -.-> applications
+```
 
-        profile --> agent --> jobs --> applications --> results
-        results -->|反馈帮助调整下一轮研究| agent
-        jobs -.-> map
-        applications -.-> map
-    end
+**可选伙伴协作：** 每人保留自己的目标与申请；Agent 通过共享记录接续研究，适合双方时再建议共同申请。
 
-    notes["Agent 有效信息<br/>发现 · 依据 · 来源 · 下一步"]
-    agent -->|实际写入研究结果| notes
-    notes -->|下次读取并继续研究| agent
-
-    subgraph collaboration["可选伙伴协作 · 两人或多人"]
-        sync["上传自己的更新<br/>允许共享的资料先加密"]
-        storage["独立私有 GitHub 数据仓库"]
-        partner["伙伴在自己的电脑拉取<br/>查看共享进度 · 由自己的 Agent 接手"]
-        sync --> storage --> partner
-    end
-
-    notes -.->|开启协作后手动同步| sync
-    partner -->|留下可供双方读取的有效信息| notes
-    partner -->|按各自目标推荐 · 合适时共同申请| jobs
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#191b24", "primaryTextColor": "#e6e8ef", "primaryBorderColor": "#53596e", "lineColor": "#858bb3", "edgeLabelBackground": "#191b24"}}}%%
+flowchart LR
+    local["我的本机工作台<br/>允许共享的进度、线索与 Agent 信息"]
+    storage["独立私有 GitHub 仓库<br/>上传前加密"]
+    partner["伙伴的本机工作台<br/>读取更新 · Agent 接续研究"]
+    local -->|手动上传| storage -->|伙伴拉取| partner
 ```
 
 **单人主线：** 真实资料 → Agent 核实与匹配 → 本人选择岗位 → 准备与推进申请 → 记录真实结果 → 调整下一轮研究。
