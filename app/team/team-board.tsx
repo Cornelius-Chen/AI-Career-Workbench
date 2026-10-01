@@ -14,6 +14,7 @@ import Workspace from '@/app/workspace';
 import LocalSyncControls from './local-sync-controls';
 import GettingStarted,{SpaceSettings} from './getting-started';
 import {registerTeamTools} from '@/lib/team-webmcp';
+import {loadOwnerApplications} from '@/lib/team-data';
 
 const stages:Record<string,string>={queued:'计划投递',processing:'准备中',submitting:'提交中',uncertain:'待确认',blocked:'需处理',submitted:'已投递',assessment:'测评',interview:'面试',offer:'Offer',rejected:'未通过',withdrawn:'已撤回'};
 const progressed=new Set(['submitted','assessment','interview','offer','rejected','withdrawn']);
@@ -25,7 +26,17 @@ export default function TeamBoard(){
  const [editing,setEditing]=useState<any>(null);
  const [showAllFiles,setShowAllFiles]=useState(false),[workspaceSection,setWorkspaceSection]=useState('applications'),[profileRequest,setProfileRequest]=useState(0);
  const open=(next:string,section?:string)=>{setView(next);setProfileRequest(section==='profile'?Date.now():0);if(section&&section!=='profile')setWorkspaceSection(section)};
- const load=useCallback(async()=>{const response=await fetch('/api/team',{cache:'no-store'});if(response.status===401){location.assign('/api/auth/github/start?return_to=%2Fteam');return}const body:any=await response.json();if(body.archived){setError('工作台已迁至本地。请在自己的电脑启动本地程序后打开下面的入口。');return}if(!response.ok)throw Error(body.error);let applicationCursor='';let applicationRows:any[];do{const page=await fetch(`/api/team?view=owner-applications&cursor=${encodeURIComponent(applicationCursor)}`,{cache:'no-store'});applicationRows=await page.json();if(!page.ok)throw Error((applicationRows as any).error);body.applications.push(...applicationRows);if(applicationRows.length)applicationCursor=applicationRows[applicationRows.length-1].id.slice(7)}while(applicationRows.length===200);const eventsByApplication=new Map<string,any[]>();let eventCursor='',eventRows:any[];do{const page=await fetch(`/api/team?view=owner-events&cursor=${encodeURIComponent(eventCursor)}`,{cache:'no-store'});eventRows=await page.json();if(!page.ok)throw Error((eventRows as any).error);for(const event of eventRows){const events=eventsByApplication.get(event.applicationId)||[];events.push(event);eventsByApplication.set(event.applicationId,events)}if(eventRows.length)eventCursor=eventRows[eventRows.length-1].cursorId}while(eventRows.length===200);for(const application of body.applications)if(application.legacy)application.events=eventsByApplication.get(application.id.slice(7))||[];body.applications.sort((a:any,b:any)=>b.updated.localeCompare(a.updated));setData(body);return body},[]);
+ const load=useCallback(async()=>{
+  const response=await fetch('/api/team',{cache:'no-store'});
+  if(response.status===401){location.assign('/api/auth/github/start?return_to=%2Fteam');return}
+  const body:any=await response.json();
+  if(body.archived){setError('工作台已迁至本地。请在自己的电脑启动本地程序后打开下面的入口。');return}
+  if(!response.ok)throw Error(body.error);
+  body.applications.push(...await loadOwnerApplications());
+  body.applications.sort((a:any,b:any)=>b.updated.localeCompare(a.updated));
+  setData(body);
+  return body;
+ },[]);
  useEffect(()=>{load().then(body=>{if(body&&!body.profiles.find((profile:any)=>profile.member_email===body.me.email)?.headline)setView('guide')}).catch(e=>setError(e.message))},[load]);
  const act=async(action:string,payload:any={},message='已保存')=>{
   setBusy(true);

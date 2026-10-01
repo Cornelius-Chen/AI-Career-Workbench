@@ -32,3 +32,26 @@ test('private résumé metadata is omitted until its owner enables sharing',()=>
  const hidden=sharedSnapshot(data,'Cornelius-Chen',credentials.emails);assert.deepEqual(hidden.files,{});assert.deepEqual(hidden.team_files,{});
  data.team_members.owner.resume_shared=1;const shared=sharedSnapshot(data,'Cornelius-Chen',credentials.emails);assert.equal(shared.files.resume.id,'resume');assert.deepEqual(shared.team_files,{});assert.deepEqual(open(seal(shared,credentials.syncKey),credentials.syncKey),shared);
 });
+
+test('change history keeps chronological bundle paths using one Git query',async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),'career-history-'));
+ const repo=path.join(root,'sync-repo');
+ try{
+  await exec('git',['init','--initial-branch=main',repo]);
+  await exec('git',['config','user.name','History Test'],{cwd:repo});
+  await exec('git',['config','user.email','history@example.com'],{cwd:repo});
+  await mkdir(path.join(repo,'changes','owner'),{recursive:true});
+  await writeFile(path.join(repo,'changes','owner','first.enc'),'first');
+  await exec('git',['add','.'],{cwd:repo});await exec('git',['commit','-m','First bundle'],{cwd:repo});
+  await mkdir(path.join(repo,'changes','member'),{recursive:true});
+  await writeFile(path.join(repo,'changes','member','second.enc'),'second');
+  await writeFile(path.join(repo,'changes','member','README.md'),'Not a bundle');
+  await exec('git',['add','.'],{cwd:repo});await exec('git',['commit','-m','Second bundle'],{cwd:repo});
+  await writeFile(path.join(repo,'changes','owner','first.enc'),'updated');
+  await exec('git',['add','.'],{cwd:repo});await exec('git',['commit','-m','Existing path updated'],{cwd:repo});
+  const sync=new LocalSync({root,credentials});
+  const query=t.mock.method(sync,'git');
+  assert.deepEqual(await sync.bundles(),['changes/owner/first.enc','changes/member/second.enc','changes/owner/first.enc'].map(file=>path.join(repo,file)));
+  assert.equal(query.mock.callCount(),1);
+ }finally{await rm(root,{recursive:true,force:true})}
+});

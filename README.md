@@ -174,11 +174,14 @@ npm run local:start
 
 ## 开发与许可
 
+构建配置位于 `config/hosting.json`；源码不再需要 `.openai/` 目录。`npm start` 与 `npm run local:start` 使用同一个本地启动入口，复用 `.local/` 中的安装状态与数据库。预览构建生成的 `dist/.openai/` 仅是工具所需的输出格式，不提交到 GitHub。
+
 开发者检查：
 
 ```sh
 npm exec tsc -- --noEmit
 npm run test:sync
+npm run test:team
 npm run build:standalone
 ```
 

@@ -3,6 +3,7 @@ import {env} from 'cloudflare:workers';
 import {db,setSetting} from '@/lib/store';
 import {safeCsv} from '@/lib/domain';
 import {workspacePreferences} from '@/lib/workspace-preferences';
+import {groupBy} from '@/lib/collections';
 import {OWNER_EMAIL,teamError,teamUser} from '@/lib/team';
 
 export const dynamic='force-dynamic';
@@ -73,29 +74,35 @@ export async function GET(req:Request){
    db().prepare("SELECT status,COUNT(*) AS n FROM applications WHERE status!='season_excluded' GROUP BY status").all<{status:string,n:number}>()
   ]);
   const users=members.results.filter(member=>collaborative||member.email===me.email).map(m=>({...m,resumeShared:!!m.resume_shared}));
-  const shared=(email:string)=>email===me.email||collaborative&&users.some(u=>u.email===email&&u.resumeShared);
+  const sharedEmails=new Set(users.filter(user=>user.resumeShared).map(user=>user.email));
+  const shared=(email:string)=>email===me.email||collaborative&&sharedEmails.has(email);
+  const eventsByApplication=groupBy(teamEvents.results,event=>event.application_id);
+  const profilesByMember=new Map(profiles.results.map(profile=>[profile.member_email,profile]));
+  const myDecisions=new Map(decisions.results.filter(decision=>decision.member_email===me.email).map(decision=>[decision.recommendation_id,decision.decision]));
   const ownerCounts=Object.fromEntries(ownerStatusCounts.results.map(row=>[row.status,row.n]));
   const ownerApplicationCount=collaborative||me.email===OWNER_EMAIL?ownerStatusCounts.results.reduce((sum,row)=>sum+row.n,0):0;
   const applications=[
    ...ownerApps.results.map(a=>{const data=JSON.parse(a.data);return {id:'legacy:'+a.id,memberEmail:OWNER_EMAIL,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:/\bintern(?:ship)?\b|实习/i.test(a.title)?'internship':'full_time',period:'',status:a.status,updated:a.updated,notes:data.notes||'',reference:data.reference||'',deadline:data.deadline||null,lastEvidence:data.lastEvidence||'',lastSource:data.lastSource||'',legacy:true,events:[]}}),
-   ...teamApps.results.filter(a=>collaborative||a.member_email===me.email).map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:teamEvents.results.filter(e=>e.application_id===a.id).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
+   ...teamApps.results.filter(a=>collaborative||a.member_email===me.email).map(a=>({id:a.id,memberEmail:a.member_email,company:a.company,title:a.title,url:a.url,location:a.location||'',lane:a.lane||'',opportunityType:a.opportunity_type,period:a.period,status:a.status,updated:a.updated,notes:a.notes,legacy:false,events:(eventsByApplication.get(a.id)||[]).map(e=>({id:e.id,created:e.created,stage:e.status,evidence:e.details}))}))
   ].sort((a,b)=>b.updated.localeCompare(a.updated));
   const files=[
    ...teamFiles.results.filter(f=>shared(f.member_email)).map(f=>({id:f.id,memberEmail:f.member_email,name:f.name,type:f.type,size:f.size,created:f.created,url:'/api/team/files/'+f.id})),
    ...ownerFiles.results.filter(()=>shared(OWNER_EMAIL)).map(f=>({id:f.id,memberEmail:OWNER_EMAIL,name:f.name,type:f.type,size:JSON.parse(f.data).size||null,created:f.created,url:'/api/team/files/'+f.id}))
   ];
   const original=legacyProfile?JSON.parse(legacyProfile.value):{};
-  const careerProfiles=users.map(member=>profiles.results.find(profile=>profile.member_email===member.email)||{member_email:member.email,headline:member.role==='owner'?[original.school,original.degree].filter(Boolean).join(' · '):'',location:member.role==='owner'?original.location||'':'',focus:'',skills:'',start_date:member.role==='owner'?original.startDate||'':'',target_type:'full_time',updated:''});
-  const sharedRecommendations=recommendations.results.filter(r=>collaborative||r.target_email===me.email||r.author_email===me.email&&!r.target_email).map(r=>({...r,coapply:!!r.coapply,myDecision:decisions.results.find(d=>d.recommendation_id===r.id&&d.member_email===me.email)?.decision||''}));
+  const careerProfiles=users.map(member=>profilesByMember.get(member.email)||{member_email:member.email,headline:member.role==='owner'?[original.school,original.degree].filter(Boolean).join(' · '):'',location:member.role==='owner'?original.location||'':'',focus:'',skills:'',start_date:member.role==='owner'?original.startDate||'':'',target_type:'full_time',updated:''});
+  const sharedRecommendations=recommendations.results.filter(r=>collaborative||r.target_email===me.email||r.author_email===me.email&&!r.target_email).map(r=>({...r,coapply:!!r.coapply,myDecision:myDecisions.get(r.id)||''}));
   const agentNotes=messages.results.filter(message=>message.author_kind==='agent'&&(collaborative||message.member_email===me.email)).map(message=>({...message,...JSON.parse(message.content)}));
   const requests=messages.results.filter(message=>message.author_kind==='person'&&(collaborative||message.member_email===me.email));
   const candidates=jobs.results;
+  const plansByMember=groupBy(applications.filter(application=>!application.legacy),application=>application.memberEmail);
+  const ownerApplicationsByUrl=groupBy(applications.filter(application=>application.memberEmail===OWNER_EMAIL),application=>application.url);
   const memberStats=users.map(member=>{
-   const mine=applications.filter(application=>application.memberEmail===member.email&&!application.legacy);
+   const mine=plansByMember.get(member.email)||[];
    const legacy=member.email===OWNER_EMAIL?ownerCounts:{};
    return {email:member.email,applications:Object.values(legacy).reduce((sum,n)=>sum+Number(n),0)+mine.length,submitted:Object.entries(legacy).reduce((sum,[status,n])=>sum+(progressed.has(status)?Number(n):0),0)+mine.filter(application=>progressed.has(application.status)).length,uncertain:Number(legacy.uncertain||0)+mine.filter(application=>application.status==='uncertain').length,queued:Number(legacy.queued||0)+mine.filter(application=>application.status==='queued').length};
   });
-  if(view==='agent')return reply({mode:preferences.mode,currentMemberEmail:me.email,members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:memberStats,confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:applications.find(application=>application.memberEmail===OWNER_EMAIL&&application.url===url)?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
+  if(view==='agent')return reply({mode:preferences.mode,currentMemberEmail:me.email,members:users.map(({email,name,role}:any)=>({email,name,role})),profiles:careerProfiles,stats:memberStats,confirmedApplications:applications.filter(a=>progressed.has(a.status)).map(({memberEmail,company,title,status,location,lane,updated,url}:any)=>({memberEmail,company,title,status,location,lane,updated,url})),candidateJobs:candidates.map(({id,company,title,url,location,lane,score,eligibility}:any)=>({id,company,title,url,location,lane,score,eligibility,ownerStatus:ownerApplicationsByUrl.get(url)?.[0]?.status||''})),recommendations:sharedRecommendations,agentNotes,requests:requests.map(({id,member_email,content,created}:any)=>({id,memberEmail:member_email,content,created}))});
   return reply({entryUrl:new URL(req.url).origin+'/team',preferences,syncConfigured:!!env.CAREER_SYNC_CONFIGURED,me:{email:me.email,name:me.name,role:me.role,resumeShared:!!me.resume_shared,local:!!env.CAREER_LOCAL_MEMBER},members:users,profiles:careerProfiles,recommendations:sharedRecommendations,applications,ownerApplicationCount,files,agentNotes,agentRequests:requests.filter(message=>message.member_email===me.email),agentTasks:agentTasks.results.filter(task=>collaborative||task.created_by_email===me.email||task.assigned_to_email===me.email)});
  }catch(e){return teamError(e)}
 }

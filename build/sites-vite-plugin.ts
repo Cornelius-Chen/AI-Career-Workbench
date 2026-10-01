@@ -173,8 +173,10 @@ export function sites({ mockAuth = true } = {}): Plugin {
     async closeBundle() {
       if (command !== "build") return;
 
+      // Upstream preview packaging requires this generated output directory.
+      // Source configuration lives in config/; dist/ is never committed.
       const outputDirectory = resolve(root, "dist", ".openai");
-      const hostingConfig = resolve(root, ".openai", "hosting.json");
+      const hostingConfig = resolve(root, "config", "hosting.json");
       const drizzleSource = resolve(root, "drizzle");
 
       await rm(outputDirectory, { recursive: true, force: true });

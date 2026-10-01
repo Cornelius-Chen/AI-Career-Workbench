@@ -106,9 +106,8 @@ export class LocalSync{
   return {message:changes.length?`已上传 ${changes.length} 条更新`:'没有新的记录需要上传'};
  }
  async bundles(){
-  const commits=(await this.git('log','--reverse','--format=%H','--','changes')).split('\n').filter(Boolean);const files=[];
-  for(const commit of commits){const changed=await this.git('diff-tree','--root','--no-commit-id','--name-only','-r',commit,'--','changes');for(const file of changed.split('\n'))if(file.endsWith('.enc'))files.push(path.join(this.repo,file))}
-  return files;
+  const history=await this.git('log','--reverse','--format=','--name-only','--no-renames','--','changes');
+  return history.split('\n').filter(file=>file.endsWith('.enc')).map(file=>path.join(this.repo,file));
  }
  async pull(refresh=true){
   if(refresh)await this.pullRepository();
