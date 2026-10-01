@@ -1,10 +1,39 @@
 # AI Career Workbench · AI 求职工作台
 
-把个人资料、岗位研究、申请进度和 Agent 的有效发现放在同一个本地工作台里，帮助你持续推进求职。**默认单人使用；需要时再开启两人或多人协作。**
+**让 Agent 的岗位研究，接上你的下一步行动。**
 
-你填写真实目标、确认资料并选择机会；自己的 Agent 研究官网、解释匹配依据并整理下一步；工作台把材料和结果留在一起，方便下一轮继续研究。
+把求职目标、简历、岗位推荐、申请进度和研究依据整理在同一个本地工作台。默认单人使用，需要时开启两人或多人协作。
 
-[开始安装](#开始安装) · [资料放哪里](#首次使用资料放哪里) · [每天怎么用](#每天怎么用) · [伙伴协作](#可选和伙伴一起用) · [反馈 Bug](#反馈-bug-与联系作者)
+[中文](README.md) · [English](README.en.md)
+
+![Node.js 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-43853d) ![Local first](https://img.shields.io/badge/数据-本地保存-2563eb) [![MIT License](https://img.shields.io/badge/License-MIT-6366f1)](LICENSE)
+
+[开始安装](#开始安装) · [交给 Agent 接手](docs/AGENT-START.md) · [资料放哪里](#首次使用资料放哪里) · [伙伴协作](#可选和伙伴一起用) · [反馈 Bug](#反馈-bug-与联系作者)
+
+## 40 秒了解工作台
+
+[![观看 AI 求职工作台演示动画](docs/images/demo-poster.png)](https://github.com/Cornelius-Chen/AI-Career-Workbench/releases/download/v0.1.0/career-demo.mp4)
+
+[观看 / 下载完整 MP4](https://github.com/Cornelius-Chen/AI-Career-Workbench/releases/download/v0.1.0/career-demo.mp4) · [动画源码与重新制作](docs/video/README.md)
+
+演示采用真实工作台界面和**独立虚构资料、公司与岗位**，不代表实际招聘或申请结果。动画以 React / Remotion 编写。
+
+![工作台动画预览](docs/images/demo-preview.gif)
+
+## 适合怎样使用？
+
+| 你的需求 | 工作台怎样帮忙 |
+| --- | --- |
+| 自己求职，资料和聊天越来越多 | 把目标、推荐依据、申请进度和下一步放在一起，方便 Agent 接着研究 |
+| 申请多了，想快速找到该处理的岗位 | 按进度、岗位类型和地区筛选，查看对应材料与凭证 |
+| 和朋友一起找工作，但目标不同 | 各自维护目标与计划，共享有效线索，分别区分全职与暑期实习 |
+| 希望个人资料留在自己的电脑 | 默认本地保存；可选协作通过独立私有仓库手动加密同步 |
+
+**先准备：** Mac、Node.js 22.13+、Git，以及你自己的 Codex / ChatGPT Agent。单人使用无需 GitHub 登录、Cloudflare 或模型 API 密钥。当前界面为中文，个人申请资料与规则主要面向美国求职。
+
+**首次使用：** [安装](#开始安装) → 填目标 → 上传真实简历并确认资料 → [把指令交给 Agent](docs/AGENT-START.md) → 选择推荐 → 跟进申请。
+
+网页保存材料和研究要求；自己的 Agent 实际读取、研究与写入。本人决定是否加入计划，只有真实提交凭证才记为已投递。
 
 ## 运行逻辑：这些功能怎样帮你推进求职？
 
@@ -185,4 +214,6 @@ npm run test:team
 npm run build:standalone
 ```
 
-源码目前公开可查看，尚未为项目整体选定开源许可证。第三方组件保留各自的许可证；公开仓库与正式开源授权不是同一件事。
+本项目采用 [MIT 许可证](LICENSE)。第三方组件与依赖保留各自的许可证。演示动画的独立工具依赖见 [动画说明](docs/video/README.md)。
+
+欢迎提交有复现步骤的 Bug、使用建议或 Pull Request；参与方式见 [贡献说明](CONTRIBUTING.md)。如果工作台对你有帮助，欢迎点个 Star，让更多求职者发现它。

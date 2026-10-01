@@ -1,0 +1,35 @@
+name: Bug / 使用问题
+description: Report a reproducible problem / 描述可复现的问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "请勿上传数据库、简历、密钥或邀请包。Redact personal information from screenshots and logs."
+  - type: input
+    id: environment
+    attributes:
+      label: 环境 / Environment
+      description: macOS version, Node.js version, solo or collaboration mode
+      placeholder: "macOS 15, Node.js 22.13, solo"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: "1. 打开哪个页面 / Open which page\n2. 执行什么操作 / What action\n3. 出现什么问题 / What happens"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果 / Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果与报错 / Actual result and error
+      description: Include redacted screenshots or error text if useful.
+    validations:
+      required: true

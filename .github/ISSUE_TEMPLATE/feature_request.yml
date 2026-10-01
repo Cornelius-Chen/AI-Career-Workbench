@@ -1,0 +1,17 @@
+name: Feature / 功能建议
+description: Describe a job-search workflow that could work better / 说明想改善的求职流程
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 目前的困难 / Current problem
+      description: What are you trying to accomplish, and where do you get stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望怎样改进 / Proposed improvement
+    validations:
+      required: true

@@ -1,0 +1,28 @@
+{
+  "name": "career-workbench-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "preview": "remotion studio src/index.tsx",
+    "render": "remotion render src/index.tsx CareerDemo ../media/career-demo.mp4 --codec h264 --crf 22 --concurrency 2",
+    "poster": "remotion still src/index.tsx CareerDemo ../images/demo-poster.png --frame 80",
+    "prerender": "node generate-score.mjs",
+    "preview:gif": "remotion render src/index.tsx CareerPreview ../images/demo-preview.gif --codec gif --every-nth-frame 5 --scale 0.375 --concurrency 2",
+    "social": "remotion still src/index.tsx SocialCard ../images/social-preview.png",
+    "prepreview": "node generate-score.mjs",
+    "preposter": "node generate-score.mjs",
+    "prepreview:gif": "node generate-score.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.531",
+    "remotion": "4.0.531",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "typescript": "5.9.3"
+  }
+}
