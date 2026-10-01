@@ -10,16 +10,6 @@
 
 [开始安装](#开始安装) · [交给 Agent 接手](docs/AGENT-START.md) · [资料放哪里](#首次使用资料放哪里) · [伙伴协作](#可选和伙伴一起用) · [反馈 Bug](#反馈-bug-与联系作者)
 
-## 40 秒了解工作台
-
-[![观看 AI 求职工作台演示动画](docs/images/demo-poster.png)](https://github.com/Cornelius-Chen/AI-Career-Workbench/releases/download/v0.1.0/career-demo.mp4)
-
-[观看 / 下载完整 MP4](https://github.com/Cornelius-Chen/AI-Career-Workbench/releases/download/v0.1.0/career-demo.mp4) · [动画源码与重新制作](docs/video/README.md)
-
-演示采用真实工作台界面和**独立虚构资料、公司与岗位**，不代表实际招聘或申请结果。动画以 React / Remotion 编写。
-
-![工作台动画预览](docs/images/demo-preview.gif)
-
 ## 适合怎样使用？
 
 | 你的需求 | 工作台怎样帮忙 |
@@ -214,6 +204,6 @@ npm run test:team
 npm run build:standalone
 ```
 
-本项目采用 [MIT 许可证](LICENSE)。第三方组件与依赖保留各自的许可证。演示动画的独立工具依赖见 [动画说明](docs/video/README.md)。
+本项目采用 [MIT 许可证](LICENSE)。第三方组件与依赖保留各自的许可证。
 
 欢迎提交有复现步骤的 Bug、使用建议或 Pull Request；参与方式见 [贡献说明](CONTRIBUTING.md)。如果工作台对你有帮助，欢迎点个 Star，让更多求职者发现它。

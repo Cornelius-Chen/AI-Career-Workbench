@@ -43,7 +43,6 @@
   ],
   "exclude": [
     "node_modules",
-    "examples",
-    "docs/video"
+    "examples"
   ]
 }

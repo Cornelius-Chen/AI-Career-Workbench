@@ -2,23 +2,13 @@
 
 **Turn your Agent's job research into a clear next step.**
 
-A local-first workspace for your career goals, résumés, job recommendations, application progress and evidence. Start solo. Add partner collaboration when you need it.
+A local-first workspace for your career goals, résumés, job recommendations, application progress and evidence. Start solo. Add partner collaboration when you need it. The current interface is Chinese.
 
 [中文](README.md) · **English**
 
 ![Node.js 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-43853d) ![Local first](https://img.shields.io/badge/Data-local--first-2563eb) [![MIT License](https://img.shields.io/badge/License-MIT-6366f1)](LICENSE)
 
 [Quick start](#quick-start-mac) · [Give this to your Agent](docs/AGENT-START.en.md) · [Collaboration](#optional-partner-collaboration) · [Report a bug](https://github.com/Cornelius-Chen/AI-Career-Workbench/issues/new/choose)
-
-## See it in 40 seconds
-
-[![Watch the product demo](docs/images/demo-poster.png)](https://github.com/Cornelius-Chen/AI-Career-Workbench/releases/download/v0.1.0/career-demo.mp4)
-
-[Watch / download the MP4](https://github.com/Cornelius-Chen/AI-Career-Workbench/releases/download/v0.1.0/career-demo.mp4) · [Editable React / Remotion source](docs/video/README.md)
-
-The demo uses the actual interface with separate **fictional profiles, companies and jobs**. It does not show real vacancies or successful applications. The video has Chinese captions; the current application UI is also Chinese.
-
-![Animated preview](docs/images/demo-preview.gif)
 
 ## What you can do
 
@@ -109,4 +99,4 @@ Include your OS and Node.js version, steps, expected result and actual error. Re
 
 ## License
 
-[MIT](LICENSE). Third-party dependencies and components retain their own licenses. The optional video project has separate dependencies and is not required to install or run the workbench.
+[MIT](LICENSE). Third-party dependencies and components retain their own licenses.

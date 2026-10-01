@@ -53,10 +53,3 @@ next-env.d.ts
 # Private records are stored outside this repository.
 *.pdf
 *.docx
-
-# Optional video tooling and rendered distribution assets
-/docs/video/node_modules/
-/docs/video/build/
-/docs/video/out/
-/docs/media/*.mp4
-/docs/video/public/score.wav
