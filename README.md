@@ -8,31 +8,7 @@
 
 ## 运行逻辑：这些功能怎样帮你推进求职？
 
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#191b24", "primaryTextColor": "#e6e8ef", "primaryBorderColor": "#53596e", "lineColor": "#858bb3", "edgeLabelBackground": "#191b24"}}}%%
-flowchart TB
-    profile["01 · 真实资料与目标<br/>简历 · 技能 · 地区 · 求职类型与年份"]
-    agent["02 · 交给自己的 Agent 研究<br/>读取资料与历史 · 核实官网 · 留下依据与下一步"]
-    jobs["03 · 本人选择推荐<br/>加入申请 / 不考虑"]
-    applications["04 · 我的工作台<br/>按类型、地区和进度筛选 · 准备材料 · 推进申请"]
-    results["05 · 凭证确认进展<br/>投递 → 测评 → 面试 → Offer"]
-    map["岗位地图<br/>辅助判断工作地点"]
-    profile --> agent --> jobs --> applications --> results
-    results -->|据真实反馈调整研究| agent
-    jobs -.-> map
-    map -.-> applications
-```
-
-**可选伙伴协作：** 每人保留自己的目标与申请；Agent 通过共享记录接续研究，适合双方时再建议共同申请。
-
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#191b24", "primaryTextColor": "#e6e8ef", "primaryBorderColor": "#53596e", "lineColor": "#858bb3", "edgeLabelBackground": "#191b24"}}}%%
-flowchart LR
-    local["我的本机工作台<br/>允许共享的进度、线索与 Agent 信息"]
-    storage["独立私有 GitHub 仓库<br/>上传前加密"]
-    partner["伙伴的本机工作台<br/>读取更新 · Agent 接续研究"]
-    local -->|手动上传| storage -->|伙伴拉取| partner
-```
+![AI 求职工作台运行逻辑：认识自己、Agent 研究、选择机会、推进申请、记录结果，以及可选的两人或多人协作。](docs/images/career-workflow.png)
 
 **单人主线：** 真实资料 → Agent 核实与匹配 → 本人选择岗位 → 准备与推进申请 → 记录真实结果 → 调整下一轮研究。
 
